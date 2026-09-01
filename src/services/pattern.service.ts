@@ -1,0 +1,216 @@
+import { prisma } from "@/lib/prisma";
+import { ApiError } from "@/lib/errors";
+import { uniquePatternSlug } from "@/lib/slug";
+
+const patternListSelect = {
+  id: true, slug: true, name: true, number: true, difficulty: true,
+  importance: true, shortDescription: true, topicId: true,
+  topic: { select: { id: true, name: true, slug: true } },
+};
+
+export async function listPublicPatterns(params: {
+  topicSlug?: string; difficulty?: string; page: number; limit: number; skip: number;
+}) {
+  const where: Record<string, unknown> = { status: "PUBLISHED" };
+  if (params.topicSlug) where.topic = { slug: params.topicSlug };
+  if (params.difficulty) where.difficulty = params.difficulty;
+
+  const [items, total] = await Promise.all([
+    prisma.pattern.findMany({
+      where, select: patternListSelect, orderBy: [{ topicId: "asc" }, { order: "asc" }],
+      skip: params.skip, take: params.limit,
+    }),
+    prisma.pattern.count({ where }),
+  ]);
+  return { items, total };
+}
+
+export async function getPatternBySlug(slug: string, userId?: string) {
+  const pattern = await prisma.pattern.findFirst({
+    where: { slug, status: "PUBLISHED" },
+    include: {
+      topic: { select: { id: true, name: true, slug: true } },
+      useCases: { orderBy: { order: "asc" } },
+      warnings: { orderBy: { order: "asc" } },
+      problems: {
+        orderBy: { order: "asc" },
+        include: { problem: true },
+      },
+    },
+  });
+  if (!pattern) throw ApiError.notFound("Pattern not found");
+
+  let userProgress = null;
+  if (userId) {
+    userProgress = await prisma.userPatternProgress.findUnique({
+      where: { userId_patternId: { userId, patternId: pattern.id } },
+    });
+  }
+
+  return { ...pattern, userProgress };
+}
+
+// ---- Admin ----
+
+interface PatternInput {
+  topicId: string; number: number; name: string; shortDescription?: string;
+  whatIsThis?: string; intuition?: string; coreIdea?: string; interviewRule?: string;
+  difficulty?: "EASY" | "MEDIUM" | "HARD"; importance?: number;
+  timeComplexity?: string; spaceComplexity?: string; pseudocode?: string;
+  cppTemplate?: string; javaTemplate?: string; jsTemplate?: string;
+  useCases?: string[]; whenNotToUse?: string[]; warnings?: string[];
+}
+
+export async function adminListPatterns() {
+  return prisma.pattern.findMany({
+    orderBy: [{ topicId: "asc" }, { order: "asc" }],
+    include: { topic: { select: { name: true, slug: true } } },
+  });
+}
+
+export async function adminGetPattern(id: string) {
+  const pattern = await prisma.pattern.findUnique({
+    where: { id },
+    include: { useCases: true, warnings: true, problems: { include: { problem: true } } },
+  });
+  if (!pattern) throw ApiError.notFound("Pattern not found");
+  return pattern;
+}
+
+export async function adminCreatePattern(input: PatternInput) {
+  const slug = await uniquePatternSlug(input.name);
+  const { useCases, whenNotToUse, warnings, ...rest } = input;
+
+  return prisma.pattern.create({
+    data: {
+      ...rest,
+      slug,
+      useCases: {
+        create: [
+          ...(useCases || []).map((c, i) => ({ content: c, order: i, isWhenNotToUse: false })),
+          ...(whenNotToUse || []).map((c, i) => ({ content: c, order: i, isWhenNotToUse: true })),
+        ],
+      },
+      warnings: { create: (warnings || []).map((c, i) => ({ content: c, order: i })) },
+    },
+    include: { useCases: true, warnings: true },
+  });
+}
+
+export async function adminUpdatePattern(id: string, input: Partial<PatternInput>) {
+  await adminGetPattern(id);
+  const { useCases, whenNotToUse, warnings, name, ...rest } = input;
+  const data: Record<string, unknown> = { ...rest };
+  if (name) {
+    data.name = name;
+    data.slug = await uniquePatternSlug(name);
+  }
+
+  if (useCases || whenNotToUse) {
+    await prisma.patternUseCase.deleteMany({ where: { patternId: id } });
+    data.useCases = {
+      create: [
+        ...(useCases || []).map((c, i) => ({ content: c, order: i, isWhenNotToUse: false })),
+        ...(whenNotToUse || []).map((c, i) => ({ content: c, order: i, isWhenNotToUse: true })),
+      ],
+    };
+  }
+  if (warnings) {
+    await prisma.patternWarning.deleteMany({ where: { patternId: id } });
+    data.warnings = { create: warnings.map((c, i) => ({ content: c, order: i })) };
+  }
+
+  return prisma.pattern.update({ where: { id }, data, include: { useCases: true, warnings: true } });
+}
+
+export async function adminDeletePattern(id: string) {
+  await adminGetPattern(id);
+  await prisma.pattern.delete({ where: { id } });
+  return { message: "Pattern deleted" };
+}
+
+export async function adminDuplicatePattern(id: string) {
+  const original = await adminGetPattern(id);
+  const slug = await uniquePatternSlug(`${original.name}-copy`);
+
+  return prisma.pattern.create({
+    data: {
+      topicId: original.topicId,
+      number: original.number,
+      name: `${original.name} (Copy)`,
+      slug,
+      shortDescription: original.shortDescription,
+      whatIsThis: original.whatIsThis,
+      intuition: original.intuition,
+      coreIdea: original.coreIdea,
+      interviewRule: original.interviewRule,
+      difficulty: original.difficulty,
+      importance: original.importance,
+      timeComplexity: original.timeComplexity,
+      spaceComplexity: original.spaceComplexity,
+      pseudocode: original.pseudocode,
+      cppTemplate: original.cppTemplate,
+      javaTemplate: original.javaTemplate,
+      jsTemplate: original.jsTemplate,
+      status: "DRAFT",
+      useCases: {
+        create: original.useCases.map((u) => ({
+          content: u.content, order: u.order, isWhenNotToUse: u.isWhenNotToUse,
+        })),
+      },
+      warnings: { create: original.warnings.map((w) => ({ content: w.content, order: w.order })) },
+    },
+  });
+}
+
+export async function adminReorderPatterns(items: { id: string; order: number }[]) {
+  await prisma.$transaction(
+    items.map((item) => prisma.pattern.update({ where: { id: item.id }, data: { order: item.order } }))
+  );
+  return { message: "Patterns reordered" };
+}
+
+export async function adminSetPatternStatus(id: string, status: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
+  await adminGetPattern(id);
+  return prisma.pattern.update({ where: { id }, data: { status } });
+}
+
+// ---- Pattern <-> Problem attachment ----
+
+export async function attachProblemToPattern(
+  patternId: string, problemId: string, isCore = true, order = 0
+) {
+  await adminGetPattern(patternId);
+  const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+  if (!problem) throw ApiError.notFound("Problem not found");
+
+  const existing = await prisma.patternProblem.findUnique({
+    where: { patternId_problemId: { patternId, problemId } },
+  });
+  if (existing) throw ApiError.conflict("Problem is already attached to this pattern");
+
+  return prisma.patternProblem.create({ data: { patternId, problemId, isCore, order } });
+}
+
+export async function detachProblemFromPattern(patternId: string, problemId: string) {
+  const link = await prisma.patternProblem.findUnique({
+    where: { patternId_problemId: { patternId, problemId } },
+  });
+  if (!link) throw ApiError.notFound("This problem is not attached to the pattern");
+  await prisma.patternProblem.delete({ where: { id: link.id } });
+  return { message: "Problem detached from pattern" };
+}
+
+export async function reorderPatternProblems(
+  patternId: string, items: { problemId: string; order: number }[]
+) {
+  await prisma.$transaction(
+    items.map((item) =>
+      prisma.patternProblem.update({
+        where: { patternId_problemId: { patternId, problemId: item.problemId } },
+        data: { order: item.order },
+      })
+    )
+  );
+  return { message: "Pattern problems reordered" };
+}

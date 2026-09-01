@@ -1,0 +1,460 @@
+// ============================================================
+// DSA PATTERN LEARNING PLATFORM — PRISMA SCHEMA
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ProblemStatus {
+  NOT_ATTEMPTED
+  ATTEMPTED
+  SOLVED
+}
+
+enum PatternStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  MASTERED
+}
+
+enum RevisionStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+enum ArticleStatus {
+  DRAFT
+  SUBMITTED
+  PUBLISHED
+  REJECTED
+  CHANGES_REQUESTED
+  ARCHIVED
+}
+
+enum ArticleCategory {
+  DSA
+  DEVELOPMENT
+  CORE_CS
+  SYSTEM_DESIGN
+  DATABASE
+  DEVOPS
+  GENAI
+  PROGRAMMING
+  OTHER
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum NotificationType {
+  COMMENT_REPLY
+  ADMIN_REPLY
+  ARTICLE_PUBLISHED
+  ARTICLE_REJECTED
+  ARTICLE_CHANGES_REQUESTED
+}
+
+// ------------------------------------------------------------
+// USER
+// ------------------------------------------------------------
+
+model User {
+  id           String @id @default(cuid())
+
+  name         String
+  email        String @unique
+  passwordHash String
+
+  role         Role   @default(STUDENT)
+
+  avatar       String?
+  bio          String?
+
+  isActive     Boolean @default(true)
+
+  articles        Article[]
+  comments        ArticleComment[]
+  likes           ArticleLike[]
+  bookmarks       ArticleBookmark[]
+
+  patternProgress UserPatternProgress[]
+  problemProgress UserProblemProgress[]
+
+  notes           Note[]
+  revisions       Revision[]
+  notifications   Notification[]
+  moderationLogs  CommentModerationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+}
+
+// ------------------------------------------------------------
+// LEARNING SYSTEM — TOPIC / PATTERN / PROBLEM
+// ------------------------------------------------------------
+
+model Topic {
+  id          String  @id @default(cuid())
+
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  icon        String?
+
+  order       Int     @default(0)
+  published   Boolean @default(true)
+
+  patterns Pattern[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pattern {
+  id     String @id @default(cuid())
+  number Int
+
+  name String
+  slug String @unique
+
+  shortDescription String?
+
+  whatIsThis    String?
+  intuition     String?
+  coreIdea      String?
+  interviewRule String?
+
+  difficulty Difficulty @default(EASY)
+  importance Int        @default(1)
+
+  timeComplexity  String?
+  spaceComplexity String?
+
+  pseudocode String?
+
+  cppTemplate  String?
+  javaTemplate String?
+  jsTemplate   String?
+
+  status ContentStatus @default(DRAFT)
+
+  topicId String
+  topic   Topic  @relation(fields: [topicId], references: [id])
+
+  useCases PatternUseCase[]
+  warnings PatternWarning[]
+
+  problems PatternProblem[]
+
+  progress  UserPatternProgress[]
+  revisions Revision[]
+
+  order Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([topicId])
+  @@index([status])
+}
+
+model PatternUseCase {
+  id      String @id @default(cuid())
+  content String
+  order   Int    @default(0)
+  isWhenNotToUse Boolean @default(false)
+
+  patternId String
+  pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+}
+
+model PatternWarning {
+  id      String @id @default(cuid())
+  content String
+  order   Int    @default(0)
+
+  patternId String
+  pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+}
+
+model Problem {
+  id String @id @default(cuid())
+
+  title String
+  slug  String @unique
+
+  platform   String?
+  externalId String?
+  solveUrl   String
+
+  difficulty Difficulty @default(EASY)
+
+  patterns PatternProblem[]
+  progress UserProblemProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PatternProblem {
+  id String @id @default(cuid())
+
+  patternId String
+  problemId String
+
+  order  Int     @default(0)
+  isCore Boolean @default(true)
+
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([patternId, problemId])
+}
+
+// ------------------------------------------------------------
+// LEARNING STATE — PROGRESS / REVISION / NOTES
+// ------------------------------------------------------------
+
+model UserProblemProgress {
+  id String @id @default(cuid())
+
+  userId    String
+  problemId String
+
+  status ProblemStatus @default(NOT_ATTEMPTED)
+
+  attempts  Int @default(0)
+  hintsUsed Int @default(0)
+
+  solvedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId])
+}
+
+model UserPatternProgress {
+  id String @id @default(cuid())
+
+  userId    String
+  patternId String
+
+  status PatternStatus @default(NOT_STARTED)
+
+  completedProblems Int @default(0)
+  totalProblems     Int @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  lastRevisedAt  DateTime?
+  nextRevisionAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, patternId])
+}
+
+model Revision {
+  id String @id @default(cuid())
+
+  userId    String
+  patternId String
+
+  scheduledAt DateTime
+  completedAt DateTime?
+
+  score  Int?
+  status RevisionStatus @default(PENDING)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, status])
+  @@index([scheduledAt])
+  @@index([patternId])
+}
+
+model Note {
+  id String @id @default(cuid())
+
+  content String
+
+  userId    String
+  patternId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------
+// ARTICLE SYSTEM
+// ------------------------------------------------------------
+
+model Article {
+  id String @id @default(cuid())
+
+  title String
+  slug  String @unique
+
+  excerpt String?
+  content String
+
+  coverImage String?
+
+  category ArticleCategory
+  subtopic String?
+
+  status      ArticleStatus @default(DRAFT)
+  publishedAt DateTime?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  comments  ArticleComment[]
+  likes     ArticleLike[]
+  bookmarks ArticleBookmark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, status])
+  @@index([authorId])
+  @@index([publishedAt])
+}
+
+model ArticleComment {
+  id String @id @default(cuid())
+
+  content String
+  status  CommentStatus @default(VISIBLE)
+  pinned  Boolean       @default(false)
+
+  articleId String
+  userId    String
+  parentId  String?
+
+  article Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  ArticleComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies ArticleComment[] @relation("CommentReplies")
+
+  moderationLogs CommentModerationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([articleId])
+  @@index([parentId])
+}
+
+model CommentModerationLog {
+  id String @id @default(cuid())
+
+  commentId String
+  comment   ArticleComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  action String
+  reason String?
+
+  createdAt DateTime @default(now())
+}
+
+model ArticleLike {
+  id String @id @default(cuid())
+
+  articleId String
+  userId    String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, userId])
+}
+
+model ArticleBookmark {
+  id String @id @default(cuid())
+
+  articleId String
+  userId    String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, userId])
+}
+
+// ------------------------------------------------------------
+// NOTIFICATIONS
+// ------------------------------------------------------------
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type NotificationType
+
+  title   String
+  message String
+
+  referenceId String?
+  read        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
