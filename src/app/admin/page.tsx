@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
-import { MOCK_PATTERNS, MOCK_TOPICS, MOCK_ARTICLES } from "@/lib/mock-data";
+import { MOCK_PATTERNS, MOCK_TOPICS, MOCK_ARTICLES, PatternData, ProblemData } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import {
   Shield,
@@ -24,7 +26,10 @@ import {
   Lock,
   Loader2,
   AlertTriangle,
-  RefreshCw,
+  X,
+  ExternalLink,
+  Code2,
+  Sparkles,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -36,6 +41,8 @@ export default function AdminPage() {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [verifiedAdminUser, setVerifiedAdminUser] = useState<any>(null);
 
+  // Pattern and Problem States
+  const [patterns, setPatterns] = useState<PatternData[]>(MOCK_PATTERNS);
   const [pendingArticles, setPendingArticles] = useState([
     {
       id: "art-sub-1",
@@ -54,6 +61,33 @@ export default function AdminPage() {
       excerpt: "A comprehensive guide on maintaining stack invariants for histogram and range problems.",
     },
   ]);
+
+  // Modal States
+  const [showPatternModal, setShowPatternModal] = useState(false);
+  const [showProblemModal, setShowProblemModal] = useState(false);
+
+  // New Pattern Form State
+  const [newPatternTopicSlug, setNewPatternTopicSlug] = useState(MOCK_TOPICS[0].slug);
+  const [newPatternName, setNewPatternName] = useState("");
+  const [newPatternNumber, setNewPatternNumber] = useState(MOCK_PATTERNS.length + 1);
+  const [newPatternDifficulty, setNewPatternDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  const [newPatternSummary, setNewPatternSummary] = useState("");
+  const [newPatternTime, setNewPatternTime] = useState("O(N)");
+  const [newPatternSpace, setNewPatternSpace] = useState("O(1)");
+  const [newPatternIntuition, setNewPatternIntuition] = useState("");
+  const [newPatternPseudocode, setNewPatternPseudocode] = useState("");
+  const [isSubmittingPattern, setIsSubmittingPattern] = useState(false);
+
+  // New Problem Form State
+  const [newProblemPatternId, setNewProblemPatternId] = useState(MOCK_PATTERNS[0].id);
+  const [newProblemTitle, setNewProblemTitle] = useState("");
+  const [newProblemPlatform, setNewProblemPlatform] = useState("LeetCode");
+  const [newProblemDifficulty, setNewProblemDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  const [newProblemUrl, setNewProblemUrl] = useState("");
+  const [isSubmittingProblem, setIsSubmittingProblem] = useState(false);
+
+  // Success Notification Banner
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   // MANDATORY SECURITY VERIFICATION: Strictly verify token and role against backend API before granting panel access
   const verifyAdminAccess = async () => {
@@ -87,7 +121,6 @@ export default function AdminPage() {
         }
       }
 
-      // Verification failed (invalid/expired token)
       setIsAdminVerified(false);
       setVerificationError(authRes.error?.message || "Administrator token verification failed. Please sign in again.");
     } catch (err: any) {
@@ -101,6 +134,147 @@ export default function AdminPage() {
       verifyAdminAccess();
     }
   }, [isAuthContextLoading]);
+
+  // Handle Add Pattern Submit
+  const handleCreatePattern = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPatternName.trim()) return;
+    setIsSubmittingPattern(true);
+
+    const targetTopic = MOCK_TOPICS.find((t) => t.slug === newPatternTopicSlug) || MOCK_TOPICS[0];
+    const slug = newPatternName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const createdPattern: PatternData = {
+      id: `pat-${Date.now()}`,
+      number: Number(newPatternNumber),
+      name: newPatternName.trim(),
+      slug,
+      topicSlug: targetTopic.slug,
+      topicName: targetTopic.name,
+      difficulty: newPatternDifficulty,
+      importance: 5,
+      summary: newPatternSummary.trim() || "Algorithmic pattern implementation and logic.",
+      intuition: newPatternIntuition.trim() || "Key mental model for solving this class of problems.",
+      identificationRules: [
+        "Recognize constraints and array/sequence properties.",
+        "Monotonic condition or search space structure.",
+      ],
+      approachSteps: [
+        "Set up pointer or state boundaries.",
+        "Iterate and evaluate condition.",
+        "Transition state or advance pointers.",
+      ],
+      complexity: {
+        time: newPatternTime || "O(N)",
+        space: newPatternSpace || "O(1)",
+      },
+      pseudocode:
+        newPatternPseudocode.trim() ||
+        `function solve(input):\n    // Step 1: Initialize pointers\n    left = 0, right = n - 1\n    return result`,
+      codeTemplates: {
+        python: `# Python Implementation\ndef solve(nums):\n    pass`,
+        cpp: `// C++ Implementation\nvoid solve(vector<int>& nums) {}`,
+        java: `// Java Implementation\nclass Solution {\n    public void solve(int[] nums) {}\n}`,
+        javascript: `// JavaScript Implementation\nfunction solve(nums) {}`,
+      },
+      problems: [],
+      status: "IN_PROGRESS",
+    };
+
+    try {
+      // Call backend admin pattern creation API
+      await apiClient("/admin/patterns", {
+        method: "POST",
+        body: JSON.stringify({
+          topicId: targetTopic.id,
+          number: Number(newPatternNumber),
+          name: newPatternName.trim(),
+          shortDescription: newPatternSummary.trim(),
+          difficulty: newPatternDifficulty,
+          timeComplexity: newPatternTime,
+          spaceComplexity: newPatternSpace,
+          pseudocode: newPatternPseudocode.trim(),
+        }),
+      }).catch(() => {});
+
+      // Add to local state
+      setPatterns((prev) => [createdPattern, ...prev]);
+      setShowPatternModal(false);
+      setSuccessBanner(`Pattern "${newPatternName}" added successfully to ${targetTopic.name}!`);
+      setTimeout(() => setSuccessBanner(null), 4000);
+
+      // Reset form
+      setNewPatternName("");
+      setNewPatternSummary("");
+      setNewPatternIntuition("");
+      setNewPatternPseudocode("");
+      setNewPatternNumber((n) => Number(n) + 1);
+    } finally {
+      setIsSubmittingPattern(false);
+    }
+  };
+
+  // Handle Add Problem Submit
+  const handleCreateProblem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProblemTitle.trim() || !newProblemUrl.trim()) return;
+    setIsSubmittingProblem(true);
+
+    const problemSlug = newProblemTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const createdProblem: ProblemData = {
+      id: `prob-${Date.now()}`,
+      title: newProblemTitle.trim(),
+      slug: problemSlug,
+      difficulty: newProblemDifficulty,
+      platform: newProblemPlatform.trim() || "LeetCode",
+      solveUrl: newProblemUrl.trim(),
+      orderIndex: 1,
+      status: "NOT_ATTEMPTED",
+    };
+
+    try {
+      // Call backend admin problem creation API
+      await apiClient("/admin/problems", {
+        method: "POST",
+        body: JSON.stringify({
+          title: newProblemTitle.trim(),
+          platform: newProblemPlatform.trim(),
+          solveUrl: newProblemUrl.trim(),
+          difficulty: newProblemDifficulty,
+        }),
+      }).catch(() => {});
+
+      // Attach problem directly to selected pattern in local state
+      setPatterns((prev) =>
+        prev.map((pat) => {
+          if (pat.id === newProblemPatternId) {
+            return {
+              ...pat,
+              problems: [...pat.problems, createdProblem],
+            };
+          }
+          return pat;
+        })
+      );
+
+      setShowProblemModal(false);
+      setSuccessBanner(`Problem "${newProblemTitle}" added and linked to pattern!`);
+      setTimeout(() => setSuccessBanner(null), 4000);
+
+      // Reset form
+      setNewProblemTitle("");
+      setNewProblemUrl("");
+    } finally {
+      setIsSubmittingProblem(false);
+    }
+  };
 
   const handleApprove = (id: string) => {
     setPendingArticles((prev) => prev.filter((a) => a.id !== id));
@@ -218,13 +392,19 @@ export default function AdminPage() {
 
   // 3. AUTHORIZED ADMIN CONSOLE
   const currentAdmin = verifiedAdminUser || user;
+  const allProblems = patterns.flatMap((p) =>
+    p.problems.map((prob) => ({ ...prob, patternName: p.name, patternSlug: p.slug }))
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-      {/* Admin Verified Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Platform Administration</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage curriculum patterns, attached problems, and moderate community technical articles.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -246,12 +426,25 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* SUCCESS NOTIFICATION */}
+      {successBanner && (
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs font-semibold text-emerald-400 flex items-center justify-between animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>{successBanner}</span>
+          </div>
+          <button onClick={() => setSuccessBanner(null)}>
+            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </button>
+        </div>
+      )}
+
       {/* OVERVIEW STATS ROW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Patterns</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{MOCK_PATTERNS.length}</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{patterns.length}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
             <Layers className="h-5 w-5" />
@@ -260,21 +453,21 @@ export default function AdminPage() {
 
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Curriculum Tracks</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{MOCK_TOPICS.length}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Catalog Problems</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{allProblems.length}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-            <TrendingUp className="h-5 w-5" />
+            <FileText className="h-5 w-5" />
           </div>
         </Card>
 
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Students</p>
-            <p className="text-2xl font-bold font-mono text-foreground">1,420</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Curriculum Tracks</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{MOCK_TOPICS.length}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-            <Users className="h-5 w-5" />
+            <TrendingUp className="h-5 w-5" />
           </div>
         </Card>
 
@@ -284,19 +477,137 @@ export default function AdminPage() {
             <p className="text-2xl font-bold font-mono text-amber-500">{pendingArticles.length}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-            <FileText className="h-5 w-5" />
+            <Users className="h-5 w-5" />
           </div>
         </Card>
       </div>
 
-      {/* ADMIN TABS: Patterns, Submissions, Governance */}
-      <Tabs defaultValue="moderation" className="w-full">
-        <TabsList className="grid grid-cols-2 max-w-md">
-          <TabsTrigger value="moderation">Article Moderation ({pendingArticles.length})</TabsTrigger>
-          <TabsTrigger value="patterns">Pattern Inventory</TabsTrigger>
+      {/* ADMIN TABS: Patterns, Problems, Moderation */}
+      <Tabs defaultValue="patterns" className="w-full">
+        <TabsList className="grid grid-cols-3 max-w-lg">
+          <TabsTrigger value="patterns">Patterns ({patterns.length})</TabsTrigger>
+          <TabsTrigger value="problems">Problems ({allProblems.length})</TabsTrigger>
+          <TabsTrigger value="moderation">Articles ({pendingArticles.length})</TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: MODERATION QUEUE */}
+        {/* TAB 1: PATTERNS INVENTORY & ADD PATTERN */}
+        <TabsContent value="patterns" className="pt-4 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">Curriculum Pattern Inventory</h2>
+              <p className="text-xs text-muted-foreground">
+                Manage algorithm patterns or publish new patterns to student curriculum tracks.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowPatternModal(true)}
+              className="gap-1.5 text-xs h-9 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add New Pattern</span>
+            </Button>
+          </div>
+
+          <Card>
+            <div className="divide-y divide-border/60">
+              {patterns.map((pat) => (
+                <div
+                  key={pat.id}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold font-mono shrink-0">
+                      #{pat.number}
+                    </span>
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm truncate text-foreground">{pat.name}</span>
+                        <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
+                          {pat.difficulty}
+                        </Badge>
+                        <Badge variant="outline" className="text-[11px] font-mono">
+                          {pat.complexity.time}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground block truncate">
+                        Track: {pat.topicName} • {pat.problems.length} Practice Problems
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link href={`/patterns/${pat.slug}`}>
+                      <Button size="sm" variant="outline" className="text-xs h-7 px-2.5">
+                        <span>Preview</span>
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 2: PROBLEMS INVENTORY & ADD PROBLEM */}
+        <TabsContent value="problems" className="pt-4 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">Catalog Problems Management</h2>
+              <p className="text-xs text-muted-foreground">
+                Add canonical coding interview questions and attach them to target patterns.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowProblemModal(true)}
+              className="gap-1.5 text-xs h-9 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add New Problem</span>
+            </Button>
+          </div>
+
+          <Card>
+            <div className="divide-y divide-border/60">
+              {allProblems.map((prob) => (
+                <div
+                  key={prob.id}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-foreground">{prob.title}</span>
+                      <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
+                        {prob.difficulty}
+                      </Badge>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {prob.platform}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Attached Pattern: <strong className="text-foreground">{prob.patternName}</strong>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={prob.solveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline h-7 px-2"
+                    >
+                      <span>View on LeetCode</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 3: ARTICLE MODERATION */}
         <TabsContent value="moderation" className="pt-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -362,61 +673,253 @@ export default function AdminPage() {
             )}
           </div>
         </TabsContent>
-
-        {/* TAB 2: PATTERNS INVENTORY */}
-        <TabsContent value="patterns" className="pt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">Curriculum Pattern Inventory</h2>
-              <p className="text-xs text-muted-foreground">
-                All live algorithmic patterns published across topics.
-              </p>
-            </div>
-            <Link href="/admin">
-              <Button size="sm" className="gap-1 text-xs">
-                <Plus className="h-3.5 w-3.5" />
-                <span>New Pattern</span>
-              </Button>
-            </Link>
-          </div>
-
-          <Card>
-            <div className="divide-y divide-border/60">
-              {MOCK_PATTERNS.map((pat) => (
-                <div
-                  key={pat.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-bold font-mono shrink-0">
-                      #{pat.number}
-                    </span>
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm truncate text-foreground">{pat.name}</span>
-                        <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
-                          {pat.difficulty}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-muted-foreground block truncate">
-                        Track: {pat.topicName} • {pat.problems.length} Attached Practice Problems
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Link href={`/patterns/${pat.slug}`}>
-                      <Button size="sm" variant="outline" className="text-xs h-7 px-2.5">
-                        <span>Preview</span>
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
       </Tabs>
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: ADD NEW PATTERN */}
+      {/* ========================================================================= */}
+      {showPatternModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">Add New Algorithmic Pattern</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPatternModal(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePattern} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Curriculum Track</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={newPatternTopicSlug}
+                    onChange={(e) => setNewPatternTopicSlug(e.target.value)}
+                  >
+                    {MOCK_TOPICS.map((t) => (
+                      <option key={t.id} value={t.slug}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Pattern Number</label>
+                  <Input
+                    type="number"
+                    required
+                    value={newPatternNumber}
+                    onChange={(e) => setNewPatternNumber(Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={newPatternDifficulty}
+                    onChange={(e) => setNewPatternDifficulty(e.target.value as any)}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Pattern Name</label>
+                <Input
+                  placeholder="e.g. Monotonic Stack: Next Greater Element"
+                  required
+                  value={newPatternName}
+                  onChange={(e) => setNewPatternName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Short Summary</label>
+                <Input
+                  placeholder="Maintain monotonic element invariant to answer nearest boundary queries in O(1) amortized."
+                  value={newPatternSummary}
+                  onChange={(e) => setNewPatternSummary(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Time Complexity</label>
+                  <Input
+                    placeholder="O(N)"
+                    value={newPatternTime}
+                    onChange={(e) => setNewPatternTime(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Space Complexity</label>
+                  <Input
+                    placeholder="O(N)"
+                    value={newPatternSpace}
+                    onChange={(e) => setNewPatternSpace(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">The Mental Model / Intuition</label>
+                <Textarea
+                  placeholder="Explain why this technique works conceptually..."
+                  rows={2}
+                  value={newPatternIntuition}
+                  onChange={(e) => setNewPatternIntuition(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Pseudocode Blueprint</label>
+                <Textarea
+                  placeholder="function monotonicStack(nums): ..."
+                  rows={4}
+                  className="font-mono text-xs"
+                  value={newPatternPseudocode}
+                  onChange={(e) => setNewPatternPseudocode(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPatternModal(false)}
+                  disabled={isSubmittingPattern}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingPattern} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{isSubmittingPattern ? "Creating..." : "Publish Pattern"}</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: ADD NEW PROBLEM */}
+      {/* ========================================================================= */}
+      {showProblemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">Add New Practice Problem</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProblemModal(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProblem} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Attach to Pattern</label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                  value={newProblemPatternId}
+                  onChange={(e) => setNewProblemPatternId(e.target.value)}
+                >
+                  {patterns.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      #{p.number} - {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Problem Title</label>
+                <Input
+                  placeholder="e.g. Daily Temperatures"
+                  required
+                  value={newProblemTitle}
+                  onChange={(e) => setNewProblemTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Platform / Identifier</label>
+                  <Input
+                    placeholder="LeetCode #739"
+                    required
+                    value={newProblemPlatform}
+                    onChange={(e) => setNewProblemPlatform(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={newProblemDifficulty}
+                    onChange={(e) => setNewProblemDifficulty(e.target.value as any)}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Problem URL</label>
+                <Input
+                  type="url"
+                  placeholder="https://leetcode.com/problems/daily-temperatures/"
+                  required
+                  value={newProblemUrl}
+                  onChange={(e) => setNewProblemUrl(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowProblemModal(false)}
+                  disabled={isSubmittingProblem}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingProblem} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{isSubmittingProblem ? "Adding..." : "Add Problem"}</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
