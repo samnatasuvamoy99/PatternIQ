@@ -110,7 +110,7 @@ export default function AdminPage() {
   // -------------------------------------------------------------
   // FORM STATES: 2. NEW PATTERN (Prisma Pattern Model)
   // -------------------------------------------------------------
-  const [newPatternTopicId, setNewPatternTopicId] = useState(MOCK_TOPICS[0].id);
+  const [newPatternTopicName, setNewPatternTopicName] = useState("");
   const [newPatternNumber, setNewPatternNumber] = useState(MOCK_PATTERNS.length + 1);
   const [newPatternName, setNewPatternName] = useState("");
   const [newPatternDifficulty, setNewPatternDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
@@ -255,7 +255,40 @@ export default function AdminPage() {
     if (!newPatternName.trim()) return;
     setIsSubmittingPattern(true);
 
-    const targetTopic = topics.find((t) => t.id === newPatternTopicId) || topics[0];
+    const topicNameClean = newPatternTopicName.trim() || "General Patterns";
+    const topicSlug = topicNameClean
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    let targetTopic = topics.find(
+      (t) => t.name.toLowerCase() === topicNameClean.toLowerCase() || t.slug === topicSlug
+    );
+
+    if (!targetTopic) {
+      targetTopic = {
+        id: `topic-${Date.now()}`,
+        name: topicNameClean,
+        slug: topicSlug,
+        description: `Curriculum track for ${topicNameClean}`,
+        patternCount: 1,
+        completedCount: 0,
+        order: topics.length + 1,
+        icon: "Layers",
+      };
+      setTopics((prev) => [...prev, targetTopic!]);
+      await apiClient("/admin/topics", {
+        method: "POST",
+        body: JSON.stringify({
+          name: topicNameClean,
+          description: `Curriculum track for ${topicNameClean}`,
+          icon: "Layers",
+          order: topics.length + 1,
+          published: true,
+        }),
+      }).catch(() => {});
+    }
+
     const slug = newPatternName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -1030,18 +1063,13 @@ export default function AdminPage() {
                 <div className="space-y-4 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
-                      <label className="font-semibold text-foreground">Target Topic Track</label>
-                      <select
-                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
-                        value={newPatternTopicId}
-                        onChange={(e) => setNewPatternTopicId(e.target.value)}
-                      >
-                        {topics.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="font-semibold text-foreground">Topic Name</label>
+                      <Input
+                        placeholder="e.g. Two Pointers, Graphs, DP"
+                        required
+                        value={newPatternTopicName}
+                        onChange={(e) => setNewPatternTopicName(e.target.value)}
+                      />
                     </div>
 
                     <div className="space-y-1.5">
