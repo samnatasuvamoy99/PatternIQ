@@ -201,10 +201,7 @@ function PatternsContent() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="border-b border-border/60 pb-6">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-0.5 text-xs font-medium text-muted-foreground mb-2">
-          <Layers className="h-3.5 w-3.5 text-primary" />
-          <span>Curriculum Repository</span>
-        </div>
+        
         <h1 className="text-3xl font-bold tracking-tight">DSA Topics & Patterns</h1>
         <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
           Browse all algorithmic topics below. Click any topic to open its dropdown and reveal all underlying patterns.

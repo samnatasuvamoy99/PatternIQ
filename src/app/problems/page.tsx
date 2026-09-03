@@ -268,14 +268,9 @@ export default function ProblemsPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="border-b border-border/60 pb-6">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-0.5 text-xs font-medium text-muted-foreground mb-2">
-          <FileText className="h-3.5 w-3.5 text-primary" />
-          <span>Practice Roadmap</span>
-        </div>
         <h1 className="text-3xl font-bold tracking-tight">Curated Problems Catalog</h1>
         <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
           Organized hierarchically by <strong>Topics</strong> &rarr; <strong>Patterns</strong> &rarr; <strong>Problems</strong>.
-          Check off solved questions, star key problems, and launch directly into solving with the Start action.
         </p>
       </div>
 

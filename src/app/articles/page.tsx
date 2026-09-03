@@ -48,10 +48,6 @@ export default function ArticlesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-0.5 text-xs font-medium text-muted-foreground mb-2">
-            <FileText className="h-3.5 w-3.5 text-primary" />
-            <span>Community Learning</span>
-          </div>
           <h1 className="text-3xl font-bold tracking-tight">Technical Articles & Guides</h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
             In-depth engineering deep dives, pattern breakdowns, and interview wisdom contributed by the community.
