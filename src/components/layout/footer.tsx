@@ -21,7 +21,7 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">Learning Tracks</h4>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/topics" className="hover:text-foreground">Topics Directory</Link></li>
+              <li><Link href="/patterns" className="hover:text-foreground">Browse Patterns by Topic</Link></li>
               <li><Link href="/patterns" className="hover:text-foreground">All 14+ Patterns</Link></li>
               <li><Link href="/problems" className="hover:text-foreground">Curated Problem Set</Link></li>
               <li><Link href="/revision" className="hover:text-foreground">Spaced Repetition</Link></li>

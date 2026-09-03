@@ -228,9 +228,9 @@ export default function Home() {
               Start with linear techniques and progress to graph algorithms and dynamic programming.
             </p>
           </div>
-          <Link href="/topics">
+          <Link href="/patterns">
             <Button variant="outline" size="sm" className="gap-1.5">
-              <span>View All Tracks</span>
+              <span>View All Patterns by Topic</span>
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -238,7 +238,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MOCK_TOPICS.map((topic) => (
-            <Link key={topic.id} href={`/topics/${topic.slug}`}>
+            <Link key={topic.id} href={`/patterns?topic=${topic.slug}`}>
               <Card className="p-5 hover:border-primary/50 transition-all hover:shadow-md cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">

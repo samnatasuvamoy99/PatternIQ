@@ -21,7 +21,6 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { name: "Topics", href: "/topics", icon: BookOpen },
   { name: "Patterns", href: "/patterns", icon: Layers },
   { name: "Problems", href: "/problems", icon: FileText },
   { name: "Revision", href: "/revision", icon: Repeat },

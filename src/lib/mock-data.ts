@@ -362,6 +362,444 @@ export const MOCK_PATTERNS: PatternData[] = [
       }
     ],
     status: "IN_PROGRESS"
+  },
+  {
+    id: "pat-3",
+    number: 3,
+    name: "Fast & Slow Pointers: Floyd's Cycle Detection",
+    slug: "floyds-cycle-detection",
+    topicSlug: "fast-slow-pointers",
+    topicName: "Fast & Slow Pointers",
+    difficulty: "EASY",
+    importance: 5,
+    summary: "Move two pointers at different speeds (1x and 2x) to detect loops or find midpoints in linear structures.",
+    intuition: "If a loop exists, a pointer moving twice as fast will inevitably lap and meet the slow pointer within the cycle without needing extra memory.",
+    identificationRules: [
+      "Linked list or sequence problem where a loop/cycle might exist.",
+      "Finding the middle node of a linked list in a single pass.",
+      "Finding the start of a cycle in O(1) space."
+    ],
+    approachSteps: [
+      "Initialize `slow = head` and `fast = head`.",
+      "Iterate while `fast != null` and `fast.next != null`.",
+      "Advance `slow = slow.next` and `fast = fast.next.next`.",
+      "If `slow == fast`, a cycle is confirmed."
+    ],
+    complexity: {
+      time: "O(N)",
+      space: "O(1)"
+    },
+    pseudocode: `function hasCycle(head):
+    slow = head
+    fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow == fast:
+            return true
+    return false`,
+    codeTemplates: {
+      cpp: `bool hasCycle(ListNode *head) {
+    ListNode *slow = head, *fast = head;
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+        if (slow == fast) return true;
+    }
+    return false;
+}`,
+      java: `public boolean hasCycle(ListNode head) {
+    ListNode slow = head, fast = head;
+    while (fast != null && fast.next != null) {
+        slow = slow.next;
+        fast = fast.next.next;
+        if (slow == fast) return true;
+    }
+    return false;
+}`,
+      python: `def hasCycle(head: Optional[ListNode]) -> bool:
+    slow, fast = head, head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow == fast:
+            return True
+    return False`,
+      javascript: `function hasCycle(head) {
+    let slow = head, fast = head;
+    while (fast && fast.next) {
+        slow = slow.next;
+        fast = fast.next.next;
+        if (slow === fast) return true;
+    }
+    return false;
+}`
+    },
+    problems: [
+      {
+        id: "prob-6",
+        title: "Linked List Cycle",
+        slug: "linked-list-cycle",
+        difficulty: "EASY",
+        platform: "LeetCode #141",
+        solveUrl: "https://leetcode.com/problems/linked-list-cycle/",
+        orderIndex: 1,
+        status: "SOLVED"
+      },
+      {
+        id: "prob-7",
+        title: "Middle of the Linked List",
+        slug: "middle-of-the-linked-list",
+        difficulty: "EASY",
+        platform: "LeetCode #876",
+        solveUrl: "https://leetcode.com/problems/middle-of-the-linked-list/",
+        orderIndex: 2,
+        status: "SOLVED"
+      }
+    ],
+    status: "MASTERED"
+  },
+  {
+    id: "pat-4",
+    number: 4,
+    name: "Binary Search: Search on Answer Range",
+    slug: "binary-search-answer-range",
+    topicSlug: "binary-search",
+    topicName: "Binary Search",
+    difficulty: "MEDIUM",
+    importance: 5,
+    summary: "Identify a monotonic predicate function f(x) and binary search across the min and max possible answers.",
+    intuition: "When direct computation is hard but verifying whether an answer K is feasible is easy, search across the answer space [low, high] in logarithmic steps.",
+    identificationRules: [
+      "Problem asks to minimize the maximum or maximize the minimum.",
+      "Feasibility function is monotonic: if K works, all values > K also work.",
+      "Input size N is large, but search space is bounded."
+    ],
+    approachSteps: [
+      "Determine range `[low, high]` of valid candidate answers.",
+      "Define `isFeasible(mid)` returning boolean.",
+      "Binary search `mid = low + (high - low) / 2`.",
+      "Adjust boundaries based on `isFeasible` result."
+    ],
+    complexity: {
+      time: "O(N log(Range))",
+      space: "O(1)"
+    },
+    pseudocode: `function searchAnswer(nums, k):
+    low = minPossible, high = maxPossible
+    ans = high
+    while low <= high:
+        mid = low + (high - low) / 2
+        if isFeasible(nums, mid, k):
+            ans = mid
+            high = mid - 1
+        else:
+            low = mid + 1
+    return ans`,
+    codeTemplates: {
+      cpp: `int shipWithinDays(vector<int>& weights, int days) {
+    int low = *max_element(weights.begin(), weights.end());
+    int high = accumulate(weights.begin(), weights.end(), 0);
+    int ans = high;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (canShip(weights, days, mid)) {
+            ans = mid;
+            high = mid - 1;
+        } else {
+            low = mid + 1;
+        }
+    }
+    return ans;
+}`,
+      java: `public int shipWithinDays(int[] weights, int days) {
+    int low = 0, high = 0;
+    for (int w : weights) { low = Math.max(low, w); high += w; }
+    int ans = high;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (canShip(weights, days, mid)) {
+            ans = mid;
+            high = mid - 1;
+        } else {
+            low = mid + 1;
+        }
+    }
+    return ans;
+}`,
+      python: `def shipWithinDays(weights: list[int], days: int) -> int:
+    low, high = max(weights), sum(weights)
+    ans = high
+    while low <= high:
+        mid = (low + high) // 2
+        if canShip(weights, days, mid):
+            ans = mid
+            high = mid - 1
+        else:
+            low = mid + 1
+    return ans`,
+      javascript: `function shipWithinDays(weights, days) {
+    let low = Math.max(...weights);
+    let high = weights.reduce((a, b) => a + b, 0);
+    let ans = high;
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (canShip(weights, days, mid)) {
+            ans = mid;
+            high = mid - 1;
+        } else {
+            low = mid + 1;
+        }
+    }
+    return ans;
+}`
+    },
+    problems: [
+      {
+        id: "prob-8",
+        title: "Capacity To Ship Packages Within D Days",
+        slug: "capacity-to-ship-packages-within-d-days",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #1011",
+        solveUrl: "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/",
+        orderIndex: 1,
+        status: "SOLVED"
+      },
+      {
+        id: "prob-9",
+        title: "Koko Eating Bananas",
+        slug: "koko-eating-bananas",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #875",
+        solveUrl: "https://leetcode.com/problems/koko-eating-bananas/",
+        orderIndex: 2,
+        status: "ATTEMPTED"
+      }
+    ],
+    status: "IN_PROGRESS"
+  },
+  {
+    id: "pat-5",
+    number: 5,
+    name: "Tree BFS: Level Order Traversal",
+    slug: "tree-level-order-traversal",
+    topicSlug: "tree-bfs-dfs",
+    topicName: "Tree BFS & DFS",
+    difficulty: "EASY",
+    importance: 5,
+    summary: "Traverse tree nodes level by level using a queue FIFO data structure.",
+    intuition: "Using a queue where the queue size is snapshot at each level allows processing all children of the current depth before moving to the next.",
+    identificationRules: [
+      "Level by level processing required (e.g. zigzag, right view, level averages).",
+      "Finding shortest path in unweighted tree or graph.",
+      "Connecting sibling nodes at the same tree depth."
+    ],
+    approachSteps: [
+      "If `root == null`, return empty list.",
+      "Initialize queue with `[root]`.",
+      "While queue is not empty, record `levelSize = queue.size()`.",
+      "Iterate `levelSize` times: pop node, add value, push left and right children."
+    ],
+    complexity: {
+      time: "O(N)",
+      space: "O(W) where W is max tree width"
+    },
+    pseudocode: `function levelOrder(root):
+    if not root: return []
+    queue = [root]
+    result = []
+    while queue:
+        levelSize = len(queue)
+        currentLevel = []
+        for i from 0 to levelSize - 1:
+            node = queue.pop(0)
+            currentLevel.append(node.val)
+            if node.left: queue.append(node.left)
+            if node.right: queue.append(node.right)
+        result.append(currentLevel)
+    return result`,
+    codeTemplates: {
+      cpp: `vector<vector<int>> levelOrder(TreeNode* root) {
+    if (!root) return {};
+    vector<vector<int>> result;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        int sz = q.size();
+        vector<int> level;
+        for (int i = 0; i < sz; i++) {
+            TreeNode* curr = q.front(); q.pop();
+            level.push_back(curr->val);
+            if (curr->left) q.push(curr->left);
+            if (curr->right) q.push(curr->right);
+        }
+        result.push_back(level);
+    }
+    return result;
+}`,
+      java: `public List<List<Integer>> levelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> level = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            TreeNode curr = queue.poll();
+            level.add(curr.val);
+            if (curr.left != null) queue.offer(curr.left);
+            if (curr.right != null) queue.offer(curr.right);
+        }
+        result.add(level);
+    }
+    return result;
+}`,
+      python: `def levelOrder(root: Optional[TreeNode]) -> list[list[int]]:
+    if not root:
+        return []
+    result, queue = [], deque([root])
+    while queue:
+        level = []
+        for _ in range(len(queue)):
+            node = queue.popleft()
+            level.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        result.append(level)
+    return result`,
+      javascript: `function levelOrder(root) {
+    if (!root) return [];
+    const result = [], queue = [root];
+    while (queue.length) {
+        const size = queue.length, level = [];
+        for (let i = 0; i < size; i++) {
+            const node = queue.shift();
+            level.push(node.val);
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+        }
+        result.push(level);
+    }
+    return result;
+}`
+    },
+    problems: [
+      {
+        id: "prob-10",
+        title: "Binary Tree Level Order Traversal",
+        slug: "binary-tree-level-order-traversal",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #102",
+        solveUrl: "https://leetcode.com/problems/binary-tree-level-order-traversal/",
+        orderIndex: 1,
+        status: "SOLVED"
+      },
+      {
+        id: "prob-11",
+        title: "Binary Tree Right Side View",
+        slug: "binary-tree-right-side-view",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #199",
+        solveUrl: "https://leetcode.com/problems/binary-tree-right-side-view/",
+        orderIndex: 2,
+        status: "SOLVED"
+      }
+    ],
+    status: "MASTERED"
+  },
+  {
+    id: "pat-6",
+    number: 6,
+    name: "Dynamic Programming: 0/1 Knapsack Pattern",
+    slug: "dp-01-knapsack",
+    topicSlug: "dynamic-programming",
+    topicName: "Dynamic Programming",
+    difficulty: "MEDIUM",
+    importance: 5,
+    summary: "Given elements with weights and values, decide to include or exclude each element to optimize total value within capacity.",
+    intuition: "At each element i with remaining capacity w, we have two choices: skip item (dp[i-1][w]) or take item (val[i] + dp[i-1][w - weight[i]]). Taking max of both gives optimal choice.",
+    identificationRules: [
+      "Subset sum, partition equal subset sum, target sum questions.",
+      "Each item can be chosen at most once.",
+      "Constraint on total weight/sum capacity."
+    ],
+    approachSteps: [
+      "Define `dp[w]` as max value achievable with capacity `w`.",
+      "Loop through each item.",
+      "Traverse capacity backwards `w` from `capacity` down to `weight[i]` to prevent reuse in same step.",
+      "Transition: `dp[w] = max(dp[w], val[i] + dp[w - weight[i]])`."
+    ],
+    complexity: {
+      time: "O(N * W)",
+      space: "O(W) 1D array space optimization"
+    },
+    pseudocode: `function knapsack(weights, values, W):
+    dp = array of size (W + 1) initialized to 0
+    for i from 0 to len(weights) - 1:
+        for w from W down to weights[i]:
+            dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+    return dp[W]`,
+    codeTemplates: {
+      cpp: `int knapsack(vector<int>& weights, vector<int>& values, int W) {
+    vector<int> dp(W + 1, 0);
+    for (int i = 0; i < weights.size(); i++) {
+        for (int w = W; w >= weights[i]; w--) {
+            dp[w] = max(dp[w], values[i] + dp[w - weights[i]]);
+        }
+    }
+    return dp[W];
+}`,
+      java: `public int knapsack(int[] weights, int[] values, int W) {
+    int[] dp = new int[W + 1];
+    for (int i = 0; i < weights.length; i++) {
+        for (int w = W; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], values[i] + dp[w - weights[i]]);
+        }
+    }
+    return dp[W];
+}`,
+      python: `def knapsack(weights: list[int], values: list[int], W: int) -> int:
+    dp = [0] * (W + 1)
+    for i in range(len(weights)):
+        for w in range(W, weights[i] - 1, -1):
+            dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+    return dp[W]`,
+      javascript: `function knapsack(weights, values, W) {
+    const dp = new Array(W + 1).fill(0);
+    for (let i = 0; i < weights.length; i++) {
+        for (let w = W; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], values[i] + dp[w - weights[i]]);
+        }
+    }
+    return dp[W];
+}`
+    },
+    problems: [
+      {
+        id: "prob-12",
+        title: "Partition Equal Subset Sum",
+        slug: "partition-equal-subset-sum",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #416",
+        solveUrl: "https://leetcode.com/problems/partition-equal-subset-sum/",
+        orderIndex: 1,
+        status: "SOLVED"
+      },
+      {
+        id: "prob-13",
+        title: "Target Sum",
+        slug: "target-sum",
+        difficulty: "MEDIUM",
+        platform: "LeetCode #494",
+        solveUrl: "https://leetcode.com/problems/target-sum/",
+        orderIndex: 2,
+        status: "ATTEMPTED"
+      }
+    ],
+    status: "IN_PROGRESS"
   }
 ];
 

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { MOCK_PATTERNS, ProblemData } from "@/lib/mock-data";
+import { apiClient } from "@/lib/api-client";
+import { MOCK_PATTERNS, ProblemData, PatternData } from "@/lib/mock-data";
 import {
   ArrowLeft,
   BrainCircuit,
@@ -21,17 +21,83 @@ import {
   Check,
   PlusCircle,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 export default function PatternDetailPage({ params }: { params: { slug: string } }) {
-  const pattern = MOCK_PATTERNS.find((p) => p.slug === params.slug) || MOCK_PATTERNS[0];
+  const fallbackPattern =
+    MOCK_PATTERNS.find((p) => p.slug === params.slug) || MOCK_PATTERNS[0];
 
+  const [pattern, setPattern] = useState<PatternData>(fallbackPattern);
+  const [problems, setProblems] = useState<ProblemData[]>(fallbackPattern.problems);
   const [copiedLang, setCopiedLang] = useState<string | null>(null);
-  const [problems, setProblems] = useState<ProblemData[]>(pattern.problems);
   const [notes, setNotes] = useState<string[]>([
     "Remember: Left pointer increments when sum < target; right pointer decrements when sum > target.",
   ]);
   const [newNote, setNewNote] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch live pattern from API
+  useEffect(() => {
+    async function loadPattern() {
+      setIsLoading(true);
+      try {
+        const res = await apiClient<any>(`/patterns/${params.slug}`);
+        if (res.success && res.data) {
+          const apiData = res.data;
+          const mapped: PatternData = {
+            id: apiData.id,
+            number: apiData.number || 1,
+            name: apiData.name,
+            slug: apiData.slug,
+            topicSlug: apiData.topic?.slug || "array",
+            topicName: apiData.topic?.name || "Array Patterns",
+            difficulty: apiData.difficulty || "MEDIUM",
+            importance: apiData.importance || 5,
+            summary: apiData.shortDescription || apiData.whatIsThis || fallbackPattern.summary,
+            intuition: apiData.intuition || apiData.coreIdea || fallbackPattern.intuition,
+            identificationRules: apiData.interviewRule
+              ? [apiData.interviewRule]
+              : fallbackPattern.identificationRules,
+            approachSteps: fallbackPattern.approachSteps,
+            complexity: {
+              time: apiData.timeComplexity || "O(N)",
+              space: apiData.spaceComplexity || "O(1)",
+            },
+            pseudocode: apiData.pseudocode || fallbackPattern.pseudocode,
+            codeTemplates: {
+              cpp: apiData.cppTemplate || fallbackPattern.codeTemplates.cpp,
+              java: apiData.javaTemplate || fallbackPattern.codeTemplates.java,
+              python: apiData.pyTemplate || fallbackPattern.codeTemplates.python,
+              javascript: apiData.jsTemplate || fallbackPattern.codeTemplates.javascript,
+            },
+            problems:
+              apiData.problems && apiData.problems.length > 0
+                ? apiData.problems.map((pItem: any, idx: number) => ({
+                    id: pItem.problem?.id || pItem.id || `prob-${idx}`,
+                    title: pItem.problem?.title || "Practice Problem",
+                    slug: pItem.problem?.slug || "problem",
+                    difficulty: pItem.problem?.difficulty || "MEDIUM",
+                    platform: pItem.problem?.platform || "LeetCode",
+                    solveUrl: pItem.problem?.url || "https://leetcode.com",
+                    orderIndex: pItem.order || idx + 1,
+                    status: "NOT_ATTEMPTED",
+                  }))
+                : fallbackPattern.problems,
+            status: apiData.userProgress?.status || "IN_PROGRESS",
+          };
+          setPattern(mapped);
+          setProblems(mapped.problems);
+        }
+      } catch (e) {
+        console.error("Using fallback pattern data", e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadPattern();
+  }, [params.slug]);
 
   const copyCode = (code: string, lang: string) => {
     navigator.clipboard.writeText(code);
@@ -39,7 +105,7 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
     setTimeout(() => setCopiedLang(null), 2000);
   };
 
-  const toggleProblemStatus = (problemId: string) => {
+  const toggleProblemStatus = async (problemId: string) => {
     setProblems((prev) =>
       prev.map((prob) => {
         if (prob.id === problemId) {
@@ -49,6 +115,15 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
         return prob;
       })
     );
+
+    // Call progress API in background
+    apiClient("/progress/problem", {
+      method: "POST",
+      body: JSON.stringify({
+        problemId,
+        status: "SOLVED",
+      }),
+    }).catch(() => {});
   };
 
   const handleAddNote = () => {
@@ -82,7 +157,7 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
             <Badge variant="outline">Time: {pattern.complexity.time}</Badge>
             <Badge variant="outline">Space: {pattern.complexity.space}</Badge>
           </div>
-          <Link href={`/topics/${pattern.topicSlug}`}>
+          <Link href={`/patterns?topic=${pattern.topicSlug}`}>
             <Button variant="outline" size="sm" className="text-xs">
               Topic: {pattern.topicName}
             </Button>

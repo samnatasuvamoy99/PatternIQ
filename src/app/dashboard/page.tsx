@@ -174,9 +174,9 @@ export default function DashboardPage() {
                 <CardTitle>Track Progress</CardTitle>
                 <CardDescription>Topics in progress</CardDescription>
               </div>
-              <Link href="/topics">
+              <Link href="/patterns">
                 <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                  <span>All Tracks</span>
+                  <span>Browse by Topic</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
                         <Progress value={completionPct} />
                       </div>
                       <span className="text-xs font-mono text-muted-foreground font-semibold">{completionPct}%</span>
-                      <Link href={`/topics/${topic.slug}`}>
+                      <Link href={`/patterns?topic=${topic.slug}`}>
                         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs">
                           Continue
                         </Button>
