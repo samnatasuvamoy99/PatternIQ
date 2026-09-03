@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeViewer } from "@/components/ui/code-viewer";
 import { apiClient } from "@/lib/api-client";
 import { MOCK_PATTERNS, ProblemData, PatternData } from "@/lib/mock-data";
 import {
@@ -235,29 +236,24 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
             </TabsContent>
 
             {/* TAB 2: Pseudocode */}
-            <TabsContent value="pseudocode" className="pt-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">Pseudocode Blueprint</CardTitle>
-                    <CardDescription>Language-agnostic algorithmic framework</CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyCode(pattern.pseudocode, "pseudo")}
-                    className="gap-1 text-xs"
-                  >
-                    {copiedLang === "pseudo" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    <span>{copiedLang === "pseudo" ? "Copied" : "Copy"}</span>
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <pre className="rounded-lg bg-muted/40 p-4 font-mono text-xs text-foreground/90 border border-border overflow-x-auto leading-relaxed">
-                    <code>{pattern.pseudocode}</code>
-                  </pre>
-                </CardContent>
-              </Card>
+            <TabsContent value="pseudocode" className="pt-3 space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Code2 className="h-4 w-4 text-primary" />
+                    <span>Pseudocode Blueprint</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Language-agnostic logic flow with step-by-step pointers and syntax highlighting
+                  </p>
+                </div>
+              </div>
+
+              <CodeViewer
+                code={pattern.pseudocode}
+                language="pseudocode"
+                title={`${pattern.slug}.algo`}
+              />
             </TabsContent>
 
             {/* TAB 3: Code Templates */}
@@ -272,31 +268,18 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                   </TabsList>
                 </div>
 
-                {(["python", "cpp", "java", "javascript"] as const).map((lang) => (
-                  <TabsContent key={lang} value={lang}>
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between pb-3">
-                        <CardTitle className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-                          {lang} Implementation
-                        </CardTitle>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => copyCode(pattern.codeTemplates[lang], lang)}
-                          className="gap-1 text-xs"
-                        >
-                          {copiedLang === lang ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                          <span>{copiedLang === lang ? "Copied" : "Copy"}</span>
-                        </Button>
-                      </CardHeader>
-                      <CardContent>
-                        <pre className="rounded-lg bg-muted/40 p-4 font-mono text-xs text-foreground/90 border border-border overflow-x-auto leading-relaxed">
-                          <code>{pattern.codeTemplates[lang]}</code>
-                        </pre>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                ))}
+                {(["python", "cpp", "java", "javascript"] as const).map((lang) => {
+                  const extension = lang === "cpp" ? "cpp" : lang === "python" ? "py" : lang === "java" ? "java" : "js";
+                  return (
+                    <TabsContent key={lang} value={lang}>
+                      <CodeViewer
+                        code={pattern.codeTemplates[lang]}
+                        language={lang}
+                        title={`${pattern.slug}.${extension}`}
+                      />
+                    </TabsContent>
+                  );
+                })}
               </Tabs>
             </TabsContent>
           </Tabs>

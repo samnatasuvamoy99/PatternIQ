@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CodeViewer } from "@/components/ui/code-viewer";
 import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   Layers,
@@ -151,14 +152,16 @@ export default function Home() {
             </div>
 
             {/* Right: Pseudocode & Execution */}
-            <div className="p-6 bg-muted/20 flex flex-col justify-between">
+            <div className="p-6 bg-muted/20 flex flex-col justify-between space-y-4">
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-3">
-                  <Code2 className="h-4 w-4" /> Pseudocode Blueprint
+                  <Code2 className="h-4 w-4 text-primary" /> Pseudocode Blueprint
                 </h4>
-                <pre className="rounded-lg bg-card p-4 font-mono text-xs text-foreground/90 border border-border overflow-x-auto leading-relaxed">
-                  <code>{featuredPattern.pseudocode}</code>
-                </pre>
+                <CodeViewer
+                  code={featuredPattern.pseudocode}
+                  language="pseudocode"
+                  title="two-sum-sorted.algo"
+                />
               </div>
 
               <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">

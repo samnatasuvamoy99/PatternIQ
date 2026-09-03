@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CodeViewer } from "@/components/ui/code-viewer";
 import { MOCK_REVISIONS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   Repeat,
@@ -135,12 +136,14 @@ export default function RevisionPage() {
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Code2 className="h-4 w-4" /> Pseudocode Verification
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <Code2 className="h-4 w-4 text-primary" /> Pseudocode Verification
                   </h4>
-                  <pre className="rounded-lg bg-muted/40 p-4 font-mono text-xs text-foreground/90 border border-border overflow-x-auto leading-relaxed">
-                    <code>{patternDetail.pseudocode}</code>
-                  </pre>
+                  <CodeViewer
+                    code={patternDetail.pseudocode}
+                    language="pseudocode"
+                    title={`${patternDetail.slug}.algo`}
+                  />
                 </div>
 
                 <div className="flex justify-end">
