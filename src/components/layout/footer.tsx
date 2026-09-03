@@ -3,7 +3,7 @@ import { Layers } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="w-full border-t border-border bg-card text-card-foreground">
+    <footer className="w-full border-t border-border bg-muted/60 dark:bg-card text-card-foreground">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="space-y-3 md:col-span-2">
