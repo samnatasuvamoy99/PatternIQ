@@ -55,22 +55,21 @@ export default function AdminPage() {
     },
   ]);
 
-  // MANDATORY SECURITY VERIFICATION: Verify token and role against backend API before granting panel access
+  // MANDATORY SECURITY VERIFICATION: Strictly verify token and role against backend API before granting panel access
   const verifyAdminAccess = async () => {
     setIsAdminVerified(null);
     setVerificationError(null);
 
     const token = typeof window !== "undefined" ? localStorage.getItem("patterniq_access_token") : null;
-    const localUserRaw = typeof window !== "undefined" ? localStorage.getItem("patterniq_user") : null;
 
-    if (!token && !localUserRaw) {
+    if (!token) {
       setIsAdminVerified(false);
-      setVerificationError("No active administrator session. Please sign in to proceed.");
+      setVerificationError("No active administrator session found. Please sign in to access the Admin Console.");
       return;
     }
 
     try {
-      // 1. Verify identity and active account with /auth/me
+      // Query server /auth/me with Bearer JWT to verify authentic admin identity and role
       const authRes = await apiClient<{ id: string; name: string; email: string; role: string }>("/auth/me");
 
       if (authRes.success && authRes.data) {
@@ -79,48 +78,21 @@ export default function AdminPage() {
           setVerifiedAdminUser(authRes.data);
           return;
         } else {
+          // Account exists but is not an administrator (e.g. STUDENT)
           setIsAdminVerified(false);
           setVerificationError(
-            `Access Denied: Account '${authRes.data.email}' has role '${authRes.data.role}'. Administrator privileges are required to access this console.`
+            `Access Denied: Account '${authRes.data.email}' has role '${authRes.data.role}'. This console is restricted strictly to verified Administrators.`
           );
           return;
         }
       }
 
-      // 2. Also attempt /admin/dashboard check (which uses requireAdmin middleware)
-      const adminDashRes = await apiClient<any>("/admin/dashboard");
-      if (adminDashRes.success) {
-        setIsAdminVerified(true);
-        if (user) setVerifiedAdminUser(user);
-        return;
-      }
-
-      // Fallback check for local mock admin demo session
-      if (localUserRaw) {
-        const parsed = JSON.parse(localUserRaw);
-        if (parsed?.role === "ADMIN") {
-          setIsAdminVerified(true);
-          setVerifiedAdminUser(parsed);
-          return;
-        }
-      }
-
+      // Verification failed (invalid/expired token)
       setIsAdminVerified(false);
-      setVerificationError(authRes.error?.message || "Administrator token verification failed.");
+      setVerificationError(authRes.error?.message || "Administrator token verification failed. Please sign in again.");
     } catch (err: any) {
-      // Offline demo fallback check
-      if (localUserRaw) {
-        try {
-          const parsed = JSON.parse(localUserRaw);
-          if (parsed?.role === "ADMIN") {
-            setIsAdminVerified(true);
-            setVerifiedAdminUser(parsed);
-            return;
-          }
-        } catch {}
-      }
       setIsAdminVerified(false);
-      setVerificationError(err?.message || "Failed to establish secure connection to admin authorization service.");
+      setVerificationError(err?.message || "Failed to reach security authorization service to verify administrator role.");
     }
   };
 
