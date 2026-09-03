@@ -89,9 +89,6 @@ export default function AdminSignInPage() {
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Student Portal Sign In</span>
           </Link>
-          <Badge variant="outline" className="border-amber-500/40 text-amber-500 gap-1 text-[11px] font-mono">
-            <Shield className="h-3 w-3" /> RESTRICTED
-          </Badge>
         </div>
 
         {/* Card */}

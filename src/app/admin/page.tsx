@@ -224,14 +224,7 @@ export default function AdminPage() {
       {/* Admin Verified Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-0.5 text-xs font-semibold text-amber-500 mb-2">
-            <Shield className="h-3.5 w-3.5" />
-            <span>Admin Console • Verified Authorization</span>
-          </div>
           <h1 className="text-3xl font-bold tracking-tight">Platform Administration</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Logged in as <strong className="text-foreground">{currentAdmin?.name}</strong> ({currentAdmin?.email}) • <Badge variant="outline" className="text-[11px] font-mono border-amber-500/40 text-amber-500">ADMIN</Badge>
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

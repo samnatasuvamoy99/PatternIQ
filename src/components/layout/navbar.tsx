@@ -87,21 +87,6 @@ export function Navbar() {
               </Link>
             );
           })}
-
-          {user?.role === "ADMIN" && (
-            <Link
-              href="/admin"
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
-                pathname.startsWith("/admin")
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              <span>Admin</span>
-            </Link>
-          )}
         </nav>
 
         {/* Right Action Icons */}
@@ -187,16 +172,6 @@ export function Navbar() {
                 <span>{item.name}</span>
               </Link>
             ))}
-            {user?.role === "ADMIN" && (
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Admin Panel</span>
-              </Link>
-            )}
           </div>
           <div className="mt-4 border-t border-border pt-4">
             {user ? (
