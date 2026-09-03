@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Layers } from "lucide-react";
+import { Brain } from "lucide-react";
 
 export function Footer() {
   return (
@@ -7,11 +7,11 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="space-y-3 md:col-span-2">
-            <div className="flex items-center gap-2 font-bold tracking-tight text-foreground">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Layers className="h-4 w-4" />
+            <div className="flex items-center gap-2.5 font-bold tracking-tight text-foreground">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+                <Brain className="h-4 w-4" />
               </div>
-              <span>Pattern<span className="text-primary font-black">IQ</span></span>
+              <span className="text-lg font-heading">Pattern<span className="text-primary font-black">IQ</span></span>
             </div>
             <p className="max-w-md text-sm text-muted-foreground leading-relaxed">
               A modern, systematic DSA pattern learning platform designed to help software engineers master interview problem patterns with intuition, code templates, and automated spaced repetition.

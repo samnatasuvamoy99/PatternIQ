@@ -74,7 +74,10 @@
   }
   .theme {
     --font-sans: var(--font-sans);
-    --font-heading: var(--font-heading)
+    --font-heading: var(--font-heading);
+  }
+  .font-heading {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
   }
   * {
     @apply border-border;

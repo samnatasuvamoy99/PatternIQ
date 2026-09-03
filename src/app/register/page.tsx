@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Layers, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Brain, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -37,10 +37,10 @@ export default function RegisterPage() {
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm mb-2">
-            <Layers className="h-6 w-6" />
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md mb-2">
+            <Brain className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
+          <h1 className="text-2xl font-bold font-heading tracking-tight">Create your account</h1>
           <p className="text-sm text-muted-foreground">
             Start mastering 14+ DSA patterns with spaced repetition
           </p>
