@@ -1,0 +1,1910 @@
+{
+	"info": {
+		"_postman_id": "dsa-pattern-backend-collection-v1",
+		"name": "DSA Pattern Learning Platform Backend API",
+		"description": "Complete Postman collection for testing all public, student, and admin backend routes in the DSA Pattern Learning Platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 1. Auth",
+			"item": [
+				{
+					"name": "Register Student",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Student\",\n  \"email\": \"student@example.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "Login User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Current User Profile (Me)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Student Name\",\n  \"bio\": \"Mastering DSA patterns day by day.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Password",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"NewSecurePassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"password"
+							]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📚 2. Topics",
+			"item": [
+				{
+					"name": "Get All Topics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/topics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"topics"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Topic Details by Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/topics/two-pointers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"topics",
+								"two-pointers"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Patterns by Topic Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/topics/two-pointers/patterns",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"topics",
+								"two-pointers",
+								"patterns"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🧩 3. Patterns",
+			"item": [
+				{
+					"name": "Get All Patterns",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/patterns?difficulty=EASY&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"patterns"
+							],
+							"query": [
+								{
+									"key": "difficulty",
+									"value": "EASY"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pattern Details by Slug",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"description": "Optional: include for user-specific progress state"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/patterns/two-pointers-opposite-direction",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"patterns",
+								"two-pointers-opposite-direction"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "💡 4. Problems",
+			"item": [
+				{
+					"name": "Get All Problems",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/problems?difficulty=EASY&search=sum",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"problems"
+							],
+							"query": [
+								{
+									"key": "difficulty",
+									"value": "EASY"
+								},
+								{
+									"key": "search",
+									"value": "sum"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Problem Details by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/problems/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"problems",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PROBLEM_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📈 5. Progress",
+			"item": [
+				{
+					"name": "Get Progress Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/progress",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pattern Progress List",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/progress/patterns",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress",
+								"patterns"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Single Pattern Progress",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/progress/patterns/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress",
+								"patterns",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Start Pattern Study",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/progress/patterns/:id/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress",
+								"patterns",
+								":id",
+								"start"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Pattern Progress Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"COMPLETED\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/progress/patterns/:id/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress",
+								"patterns",
+								":id",
+								"status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark Problem as Solved",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"hintsUsed\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/progress/problems/:id/solved",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"progress",
+								"problems",
+								":id",
+								"solved"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PROBLEM_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔄 6. Revision & Spaced Repetition",
+			"item": [
+				{
+					"name": "Get Today's Revisions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/today",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								"today"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Upcoming Revisions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/upcoming",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								"upcoming"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Revision History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								"history"
+							]
+						}
+					}
+				},
+				{
+					"name": "Start Revision Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/:id/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								":id",
+								"start"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_REVISION_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Complete Revision Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/:id/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								":id",
+								"complete"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_REVISION_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Skip Revision Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/revision/:id/skip",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"revision",
+								":id",
+								"skip"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_REVISION_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📝 7. Personal Notes",
+			"item": [
+				{
+					"name": "Get User Notes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?patternId=ENTER_PATTERN_ID_HERE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "patternId",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Personal Note",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Remember to handle edge case when left equals right pointers.\",\n  \"patternId\": \"ENTER_PATTERN_ID_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Personal Note",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated note with time complexity: O(N) time and O(1) space.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_NOTE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Personal Note",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_NOTE_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📰 8. Articles & Bookmarks",
+			"item": [
+				{
+					"name": "Get Articles Feed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/articles?category=DSA&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles"
+							],
+							"query": [
+								{
+									"key": "category",
+									"value": "DSA"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Trending Articles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/articles/trending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								"trending"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Article Details by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Article Content",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Comprehensive Guide to Two Pointers Pattern\",\n  \"content\": \"Detailed article content explaining two pointer technique with examples.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Submit Article for Review",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/submit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"submit"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Like Article",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Unlike Article",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Bookmark Article",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/bookmark",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"bookmark"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Remove Bookmark",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/bookmark",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"bookmark"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User Bookmarked Articles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/bookmarks/articles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"bookmarks",
+								"articles"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Article",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "💬 9. Comments",
+			"item": [
+				{
+					"name": "Get Article Comments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"comments"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Comment to Article",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Very clear explanation of the algorithm!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/articles/:id/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"articles",
+								":id",
+								"comments"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Comment",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated comment content.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/comments/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_COMMENT_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/comments/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_COMMENT_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Reply to Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Thank you! Glad it helped.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/comments/:id/replies",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments",
+								":id",
+								"replies"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_COMMENT_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Reply",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/comments/:id/replies/:replyId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments",
+								":id",
+								"replies",
+								":replyId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_COMMENT_ID_HERE"
+								},
+								{
+									"key": "replyId",
+									"value": "ENTER_REPLY_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔔 10. Dashboard & Notifications",
+			"item": [
+				{
+					"name": "Get Student Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"dashboard"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications"
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark All Notifications Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/read-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"read-all"
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark Single Notification Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/:id/read",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								":id",
+								"read"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_NOTIFICATION_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔍 11. Search",
+			"item": [
+				{
+					"name": "Global Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search?q=two+pointers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "two+pointers"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👑 12. Admin Management",
+			"item": [
+				{
+					"name": "Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"dashboard"
+							]
+						}
+					}
+				},
+				{
+					"name": "Admin Analytics Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/analytics/overview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"analytics",
+								"overview"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Users (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User Details (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_USER_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Activate User (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/:id/activate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								":id",
+								"activate"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_USER_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Deactivate User (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/:id/deactivate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								":id",
+								"deactivate"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_USER_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update User Role (Promote / Demote)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"ADMIN\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/:id/role",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								":id",
+								"role"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_USER_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Topic (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Arrays & Strings\",\n  \"description\": \"Fundamental array manipulations and string algorithms.\",\n  \"icon\": \"array-icon\",\n  \"order\": 1,\n  \"published\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/topics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"topics"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Pattern (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"topicId\": \"ENTER_TOPIC_ID_HERE\",\n  \"number\": 1,\n  \"name\": \"Two Pointers\",\n  \"shortDescription\": \"Use two pointers to scan data from different positions.\",\n  \"difficulty\": \"EASY\",\n  \"importance\": 5,\n  \"timeComplexity\": \"O(N)\",\n  \"spaceComplexity\": \"O(1)\",\n  \"pseudocode\": \"left = 0, right = arr.length - 1\",\n  \"cppTemplate\": \"// C++ template\",\n  \"javaTemplate\": \"// Java template\",\n  \"jsTemplate\": \"// JS template\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/patterns",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"patterns"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Problem (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Two Sum\",\n  \"platform\": \"LeetCode\",\n  \"externalId\": \"1\",\n  \"solveUrl\": \"https://leetcode.com/problems/two-sum\",\n  \"difficulty\": \"EASY\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/problems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"problems"
+							]
+						}
+					}
+				},
+				{
+					"name": "Attach Problem to Pattern (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"problemId\": \"ENTER_PROBLEM_ID_HERE\",\n  \"isCore\": true,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/patterns/:id/problems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"patterns",
+								":id",
+								"problems"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Publish Pattern (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/patterns/:id/publish",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"patterns",
+								":id",
+								"publish"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_PATTERN_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Publish Article (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/articles/:id/publish",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"articles",
+								":id",
+								"publish"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Reject Article (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Article lacks required complexity analysis section.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/articles/:id/reject",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"articles",
+								":id",
+								"reject"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ENTER_ARTICLE_ID_HERE"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

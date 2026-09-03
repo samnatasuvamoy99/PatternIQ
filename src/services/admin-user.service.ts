@@ -39,3 +39,19 @@ export async function adminSetUserActive(id: string, isActive: boolean) {
   await adminGetUser(id);
   return prisma.user.update({ where: { id }, data: { isActive } });
 }
+
+export async function adminSetUserRole(id: string, role: "STUDENT" | "ADMIN") {
+  await adminGetUser(id);
+  return prisma.user.update({
+    where: { id },
+    data: { role },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+    },
+  });
+}
