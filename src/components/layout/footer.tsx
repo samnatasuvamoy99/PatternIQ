@@ -42,11 +42,11 @@ export function Footer() {
         <div className="mt-8 border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-4">
           <p>© {new Date().getFullYear()} PatternIQ. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <span>Next.js 14 App Router</span>
+            <Link href="/patterns" className="hover:text-foreground">Patterns</Link>
             <span>•</span>
-            <span>Tailwind CSS + shadcn</span>
+            <Link href="/problems" className="hover:text-foreground">Problems</Link>
             <span>•</span>
-            <span>Prisma ORM</span>
+            <Link href="/revision" className="hover:text-foreground">Revision</Link>
           </div>
         </div>
       </div>
