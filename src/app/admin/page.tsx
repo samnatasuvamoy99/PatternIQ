@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CodeViewer } from "@/components/ui/code-viewer";
 import { apiClient } from "@/lib/api-client";
-import { MOCK_PATTERNS, MOCK_TOPICS, MOCK_ARTICLES, PatternData, ProblemData, TopicData } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import {
   Shield,
@@ -30,17 +28,16 @@ import {
   X,
   ExternalLink,
   Code2,
-  Sparkles,
   BookOpen,
   Target,
   Maximize2,
   Zap,
   GitBranch,
-  Star,
-  Globe,
-  Terminal,
-  Copy,
   FolderPlus,
+  Edit2,
+  Trash2,
+  MessageSquare,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +51,63 @@ const TOPIC_ICON_OPTIONS = [
   { name: "Code2 (Data Structures)", icon: Code2, value: "Code2" },
 ];
 
+interface TopicItem {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string | null;
+  order: number;
+  published: boolean;
+  _count?: { patterns: number };
+}
+
+interface PatternItem {
+  id: string;
+  number: number;
+  name: string;
+  slug: string;
+  topicId: string;
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  importance: number;
+  shortDescription?: string | null;
+  whatIsThis?: string | null;
+  intuition?: string | null;
+  coreIdea?: string | null;
+  interviewRule?: string | null;
+  timeComplexity?: string | null;
+  spaceComplexity?: string | null;
+  pseudocode?: string | null;
+  cppTemplate?: string | null;
+  javaTemplate?: string | null;
+  jsTemplate?: string | null;
+  topic?: { id: string; name: string; slug: string };
+  _count?: { problems: number };
+}
+
+interface ProblemItem {
+  id: string;
+  title: string;
+  slug: string;
+  platform?: string | null;
+  externalId?: string | null;
+  solveUrl: string;
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  patterns?: Array<{ pattern: { id: string; name: string; slug: string } }>;
+}
+
+interface ArticleItem {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  category: string;
+  status: string;
+  publishedAt?: string | null;
+  author?: { id: string; name: string };
+  createdAt: string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, logout, isLoading: isAuthContextLoading } = useAuth();
@@ -63,55 +117,63 @@ export default function AdminPage() {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [verifiedAdminUser, setVerifiedAdminUser] = useState<any>(null);
 
-  // Curriculum Data States
-  const [topics, setTopics] = useState<TopicData[]>(MOCK_TOPICS);
-  const [patterns, setPatterns] = useState<PatternData[]>(MOCK_PATTERNS);
-  const [pendingArticles, setPendingArticles] = useState([
-    {
-      id: "art-sub-1",
-      title: "Binary Tree Morris Traversal: Constant Space Magic",
-      author: "David Kim",
-      category: "DSA",
-      submittedAt: "3 hours ago",
-      excerpt: "How to traverse binary trees in O(1) extra auxiliary memory using threaded nodes.",
-    },
-    {
-      id: "art-sub-2",
-      title: "Monotonic Stack Patterns for Next Greater Element",
-      author: "Priya Sharma",
-      category: "DSA",
-      submittedAt: "1 day ago",
-      excerpt: "A comprehensive guide on maintaining stack invariants for histogram and range problems.",
-    },
-  ]);
+  // Live Curriculum & Management Data States
+  const [dashboardTotals, setDashboardTotals] = useState({
+    users: 0,
+    patterns: 0,
+    problems: 0,
+    publishedArticles: 0,
+    pendingArticles: 0,
+    comments: 0,
+  });
 
-  // Modal Open States
+  const [topics, setTopics] = useState<TopicItem[]>([]);
+  const [patterns, setPatterns] = useState<PatternItem[]>([]);
+  const [problems, setProblems] = useState<ProblemItem[]>([]);
+  const [pendingArticles, setPendingArticles] = useState<ArticleItem[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Success / Error Banner
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+
+  // Modals Open States (Create)
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [showPatternModal, setShowPatternModal] = useState(false);
   const [showProblemModal, setShowProblemModal] = useState(false);
 
-  // Active Tab inside Pattern Modal: "meta" | "intuition" | "code"
+  // Modals Open States (Edit)
+  const [editingTopic, setEditingTopic] = useState<TopicItem | null>(null);
+  const [editingPattern, setEditingPattern] = useState<PatternItem | null>(null);
+  const [editingProblem, setEditingProblem] = useState<ProblemItem | null>(null);
+
+  // Active Tab inside Pattern Modals: "meta" | "intuition" | "code"
   const [patternModalTab, setPatternModalTab] = useState<"meta" | "intuition" | "code">("meta");
   const [templateLangTab, setTemplateLangTab] = useState<"python" | "cpp" | "java" | "javascript">("python");
 
-  // Success Notification Banner
-  const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  // Deletion Confirmation Modal State
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: "topic" | "pattern" | "problem" | "article";
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // -------------------------------------------------------------
-  // FORM STATES: 1. NEW TOPIC (Prisma Topic Model)
+  // FORM STATES: 1. NEW TOPIC
   // -------------------------------------------------------------
   const [newTopicName, setNewTopicName] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicIcon, setNewTopicIcon] = useState("Target");
-  const [newTopicOrder, setNewTopicOrder] = useState(MOCK_TOPICS.length + 1);
+  const [newTopicOrder, setNewTopicOrder] = useState(1);
   const [newTopicPublished, setNewTopicPublished] = useState(true);
   const [isSubmittingTopic, setIsSubmittingTopic] = useState(false);
 
   // -------------------------------------------------------------
-  // FORM STATES: 2. NEW PATTERN (Prisma Pattern Model)
+  // FORM STATES: 2. NEW PATTERN
   // -------------------------------------------------------------
-  const [newPatternTopicName, setNewPatternTopicName] = useState("");
-  const [newPatternNumber, setNewPatternNumber] = useState(MOCK_PATTERNS.length + 1);
+  const [newPatternTopicId, setNewPatternTopicId] = useState("");
+  const [newPatternNumber, setNewPatternNumber] = useState(1);
   const [newPatternName, setNewPatternName] = useState("");
   const [newPatternDifficulty, setNewPatternDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
   const [newPatternImportance, setNewPatternImportance] = useState(5);
@@ -140,9 +202,9 @@ export default function AdminPage() {
   const [isSubmittingPattern, setIsSubmittingPattern] = useState(false);
 
   // -------------------------------------------------------------
-  // FORM STATES: 3. NEW PROBLEM (Prisma Problem Model)
+  // FORM STATES: 3. NEW PROBLEM
   // -------------------------------------------------------------
-  const [newProblemPatternId, setNewProblemPatternId] = useState(MOCK_PATTERNS[0].id);
+  const [newProblemPatternId, setNewProblemPatternId] = useState("");
   const [newProblemTitle, setNewProblemTitle] = useState("");
   const [newProblemPlatform, setNewProblemPlatform] = useState("LeetCode");
   const [newProblemExternalId, setNewProblemExternalId] = useState("");
@@ -173,6 +235,7 @@ export default function AdminPage() {
         if (authRes.data.role === "ADMIN") {
           setIsAdminVerified(true);
           setVerifiedAdminUser(authRes.data);
+          loadAllAdminData();
           return;
         } else {
           setIsAdminVerified(false);
@@ -198,6 +261,64 @@ export default function AdminPage() {
   }, [isAuthContextLoading]);
 
   // -------------------------------------------------------------
+  // FETCH ALL LIVE ADMIN DATA
+  // -------------------------------------------------------------
+  const loadAllAdminData = async () => {
+    setIsLoadingData(true);
+    try {
+      const [dashRes, topicsRes, patternsRes, problemsRes, articlesRes] = await Promise.all([
+        apiClient<any>("/admin/dashboard"),
+        apiClient<TopicItem[]>("/admin/topics"),
+        apiClient<PatternItem[]>("/admin/patterns"),
+        apiClient<ProblemItem[]>("/admin/problems"),
+        apiClient<ArticleItem[]>("/admin/articles?status=SUBMITTED"),
+      ]);
+
+      if (dashRes.success && dashRes.data?.totals) {
+        setDashboardTotals(dashRes.data.totals);
+      }
+
+      if (topicsRes.success && Array.isArray(topicsRes.data)) {
+        setTopics(topicsRes.data);
+        if (topicsRes.data.length > 0 && !newPatternTopicId) {
+          setNewPatternTopicId(topicsRes.data[0].id);
+        }
+      }
+
+      if (patternsRes.success && Array.isArray(patternsRes.data)) {
+        setPatterns(patternsRes.data);
+        if (patternsRes.data.length > 0 && !newProblemPatternId) {
+          setNewProblemPatternId(patternsRes.data[0].id);
+        }
+      }
+
+      if (problemsRes.success && Array.isArray(problemsRes.data)) {
+        setProblems(problemsRes.data);
+      }
+
+      if (articlesRes.success && Array.isArray(articlesRes.data)) {
+        setPendingArticles(articlesRes.data);
+      }
+    } catch (err) {
+      console.error("Failed to load admin data", err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const showSuccess = (msg: string) => {
+    setSuccessBanner(msg);
+    setErrorBanner(null);
+    setTimeout(() => setSuccessBanner(null), 4500);
+  };
+
+  const showError = (msg: string) => {
+    setErrorBanner(msg);
+    setSuccessBanner(null);
+    setTimeout(() => setErrorBanner(null), 5000);
+  };
+
+  // -------------------------------------------------------------
   // HANDLERS: 1. CREATE TOPIC
   // -------------------------------------------------------------
   const handleCreateTopic = async (e: React.FormEvent) => {
@@ -205,195 +326,178 @@ export default function AdminPage() {
     if (!newTopicName.trim()) return;
     setIsSubmittingTopic(true);
 
-    const slug = newTopicName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    const newTopic: TopicData = {
-      id: `topic-${Date.now()}`,
-      name: newTopicName.trim(),
-      slug,
-      description: newTopicDescription.trim() || "Algorithmic patterns track.",
-      patternCount: 0,
-      completedCount: 0,
-      order: Number(newTopicOrder),
-      icon: newTopicIcon,
-    };
-
     try {
-      await apiClient("/admin/topics", {
+      const res = await apiClient<TopicItem>("/admin/topics", {
         method: "POST",
         body: JSON.stringify({
           name: newTopicName.trim(),
-          description: newTopicDescription.trim(),
+          description: newTopicDescription.trim() || undefined,
           icon: newTopicIcon,
           order: Number(newTopicOrder),
           published: newTopicPublished,
         }),
-      }).catch(() => {});
+      });
 
-      setTopics((prev) => [...prev, newTopic]);
-      setShowTopicModal(false);
-      setSuccessBanner(`Topic "${newTopicName}" successfully created!`);
-      setTimeout(() => setSuccessBanner(null), 4000);
-
-      // Reset
-      setNewTopicName("");
-      setNewTopicDescription("");
-      setNewTopicOrder((o) => Number(o) + 1);
+      if (res.success && res.data) {
+        setTopics((prev) => [...prev, res.data!]);
+        setShowTopicModal(false);
+        showSuccess(`Topic "${newTopicName}" successfully created!`);
+        setNewTopicName("");
+        setNewTopicDescription("");
+        setNewTopicOrder((o) => Number(o) + 1);
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to create topic");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to create topic");
     } finally {
       setIsSubmittingTopic(false);
     }
   };
 
   // -------------------------------------------------------------
-  // HANDLERS: 2. CREATE PATTERN
+  // HANDLERS: 2. UPDATE TOPIC
+  // -------------------------------------------------------------
+  const handleUpdateTopic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTopic || !editingTopic.name.trim()) return;
+    setIsSubmittingTopic(true);
+
+    try {
+      const res = await apiClient<TopicItem>(`/admin/topics/${editingTopic.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: editingTopic.name.trim(),
+          description: editingTopic.description?.trim() || undefined,
+          icon: editingTopic.icon || undefined,
+          order: Number(editingTopic.order),
+          published: editingTopic.published,
+        }),
+      });
+
+      if (res.success && res.data) {
+        setTopics((prev) => prev.map((t) => (t.id === editingTopic.id ? res.data! : t)));
+        setEditingTopic(null);
+        showSuccess(`Topic "${editingTopic.name}" successfully updated!`);
+      } else {
+        showError(res.error?.message || "Failed to update topic");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to update topic");
+    } finally {
+      setIsSubmittingTopic(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // HANDLERS: 3. CREATE PATTERN
   // -------------------------------------------------------------
   const handleCreatePattern = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPatternName.trim()) return;
+    if (!newPatternName.trim() || !newPatternTopicId) return;
     setIsSubmittingPattern(true);
 
-    const topicNameClean = newPatternTopicName.trim() || "General Patterns";
-    const topicSlug = topicNameClean
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    let targetTopic = topics.find(
-      (t) => t.name.toLowerCase() === topicNameClean.toLowerCase() || t.slug === topicSlug
-    );
-
-    if (!targetTopic) {
-      targetTopic = {
-        id: `topic-${Date.now()}`,
-        name: topicNameClean,
-        slug: topicSlug,
-        description: `Curriculum track for ${topicNameClean}`,
-        patternCount: 1,
-        completedCount: 0,
-        order: topics.length + 1,
-        icon: "Layers",
-      };
-      setTopics((prev) => [...prev, targetTopic!]);
-      await apiClient("/admin/topics", {
-        method: "POST",
-        body: JSON.stringify({
-          name: topicNameClean,
-          description: `Curriculum track for ${topicNameClean}`,
-          icon: "Layers",
-          order: topics.length + 1,
-          published: true,
-        }),
-      }).catch(() => {});
-    }
-
-    const slug = newPatternName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    const createdPattern: PatternData = {
-      id: `pat-${Date.now()}`,
-      number: Number(newPatternNumber),
-      name: newPatternName.trim(),
-      slug,
-      topicSlug: targetTopic.slug,
-      topicName: targetTopic.name,
-      difficulty: newPatternDifficulty,
-      importance: newPatternImportance,
-      summary: newPatternShortDesc.trim() || "Algorithmic pattern implementation.",
-      intuition: newPatternIntuition.trim() || "Mental model and visual technique.",
-      identificationRules: newPatternInterviewRule
-        ? [newPatternInterviewRule.trim()]
-        : ["Problem involves ordered sequence or pair searching."],
-      approachSteps: [
-        "Initialize pointer boundaries and invariants.",
-        "Iterate and evaluate condition.",
-        "Transition pointers or update optimal state.",
-      ],
-      complexity: {
-        time: newPatternTime || "O(N)",
-        space: newPatternSpace || "O(1)",
-      },
-      pseudocode: newPatternPseudocode.trim(),
-      codeTemplates: {
-        python: newPatternPy.trim(),
-        cpp: newPatternCpp.trim(),
-        java: newPatternJava.trim(),
-        javascript: newPatternJs.trim(),
-      },
-      problems: [],
-      status: "IN_PROGRESS",
-    };
-
     try {
-      await apiClient("/admin/patterns", {
+      const res = await apiClient<PatternItem>("/admin/patterns", {
         method: "POST",
         body: JSON.stringify({
-          topicId: targetTopic.id,
+          topicId: newPatternTopicId,
           number: Number(newPatternNumber),
           name: newPatternName.trim(),
-          shortDescription: newPatternShortDesc.trim(),
-          whatIsThis: newPatternWhatIsThis.trim(),
-          intuition: newPatternIntuition.trim(),
-          coreIdea: newPatternCoreIdea.trim(),
-          interviewRule: newPatternInterviewRule.trim(),
+          shortDescription: newPatternShortDesc.trim() || undefined,
+          whatIsThis: newPatternWhatIsThis.trim() || undefined,
+          intuition: newPatternIntuition.trim() || undefined,
+          coreIdea: newPatternCoreIdea.trim() || undefined,
+          interviewRule: newPatternInterviewRule.trim() || undefined,
           difficulty: newPatternDifficulty,
           importance: Number(newPatternImportance),
           timeComplexity: newPatternTime,
           spaceComplexity: newPatternSpace,
-          pseudocode: newPatternPseudocode.trim(),
-          cppTemplate: newPatternCpp.trim(),
-          javaTemplate: newPatternJava.trim(),
-          jsTemplate: newPatternJs.trim(),
+          pseudocode: newPatternPseudocode.trim() || undefined,
+          cppTemplate: newPatternCpp.trim() || undefined,
+          javaTemplate: newPatternJava.trim() || undefined,
+          jsTemplate: newPatternJs.trim() || undefined,
+          pyTemplate: newPatternPy.trim() || undefined,
         }),
-      }).catch(() => {});
+      });
 
-      setPatterns((prev) => [createdPattern, ...prev]);
-      setShowPatternModal(false);
-      setSuccessBanner(`Pattern "${newPatternName}" published to ${targetTopic.name}!`);
-      setTimeout(() => setSuccessBanner(null), 4000);
-
-      // Reset
-      setNewPatternName("");
-      setNewPatternShortDesc("");
-      setNewPatternIntuition("");
-      setNewPatternCoreIdea("");
-      setNewPatternInterviewRule("");
-      setNewPatternNumber((n) => Number(n) + 1);
+      if (res.success && res.data) {
+        setPatterns((prev) => [res.data!, ...prev]);
+        setShowPatternModal(false);
+        showSuccess(`Pattern "${newPatternName}" successfully created!`);
+        setNewPatternName("");
+        setNewPatternShortDesc("");
+        setNewPatternIntuition("");
+        setNewPatternCoreIdea("");
+        setNewPatternInterviewRule("");
+        setNewPatternNumber((n) => Number(n) + 1);
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to create pattern");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to create pattern");
     } finally {
       setIsSubmittingPattern(false);
     }
   };
 
   // -------------------------------------------------------------
-  // HANDLERS: 3. CREATE PROBLEM
+  // HANDLERS: 4. UPDATE PATTERN
+  // -------------------------------------------------------------
+  const handleUpdatePattern = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPattern || !editingPattern.name.trim()) return;
+    setIsSubmittingPattern(true);
+
+    try {
+      const res = await apiClient<PatternItem>(`/admin/patterns/${editingPattern.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          topicId: editingPattern.topicId,
+          number: Number(editingPattern.number),
+          name: editingPattern.name.trim(),
+          shortDescription: editingPattern.shortDescription?.trim() || undefined,
+          whatIsThis: editingPattern.whatIsThis?.trim() || undefined,
+          intuition: editingPattern.intuition?.trim() || undefined,
+          coreIdea: editingPattern.coreIdea?.trim() || undefined,
+          interviewRule: editingPattern.interviewRule?.trim() || undefined,
+          difficulty: editingPattern.difficulty,
+          importance: Number(editingPattern.importance),
+          timeComplexity: editingPattern.timeComplexity || undefined,
+          spaceComplexity: editingPattern.spaceComplexity || undefined,
+          pseudocode: editingPattern.pseudocode?.trim() || undefined,
+          cppTemplate: editingPattern.cppTemplate?.trim() || undefined,
+          javaTemplate: editingPattern.javaTemplate?.trim() || undefined,
+          jsTemplate: editingPattern.jsTemplate?.trim() || undefined,
+        }),
+      });
+
+      if (res.success && res.data) {
+        setPatterns((prev) => prev.map((p) => (p.id === editingPattern.id ? { ...p, ...res.data! } : p)));
+        setEditingPattern(null);
+        showSuccess(`Pattern "${editingPattern.name}" successfully updated!`);
+      } else {
+        showError(res.error?.message || "Failed to update pattern");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to update pattern");
+    } finally {
+      setIsSubmittingPattern(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // HANDLERS: 5. CREATE PROBLEM
   // -------------------------------------------------------------
   const handleCreateProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProblemTitle.trim() || !newProblemUrl.trim()) return;
     setIsSubmittingProblem(true);
 
-    const problemSlug = newProblemTitle
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    const createdProblem: ProblemData = {
-      id: `prob-${Date.now()}`,
-      title: newProblemTitle.trim(),
-      slug: problemSlug,
-      difficulty: newProblemDifficulty,
-      platform: newProblemPlatform.trim() || "LeetCode",
-      solveUrl: newProblemUrl.trim(),
-      orderIndex: 1,
-      status: "NOT_ATTEMPTED",
-    };
-
     try {
-      await apiClient("/admin/problems", {
+      const res = await apiClient<ProblemItem>("/admin/problems", {
         method: "POST",
         body: JSON.stringify({
           title: newProblemTitle.trim(),
@@ -402,38 +506,143 @@ export default function AdminPage() {
           solveUrl: newProblemUrl.trim(),
           difficulty: newProblemDifficulty,
         }),
-      }).catch(() => {});
+      });
 
-      setPatterns((prev) =>
-        prev.map((pat) => {
-          if (pat.id === newProblemPatternId) {
-            return {
-              ...pat,
-              problems: [...pat.problems, createdProblem],
-            };
-          }
-          return pat;
-        })
-      );
+      if (res.success && res.data) {
+        const createdProb = res.data;
 
-      setShowProblemModal(false);
-      setSuccessBanner(`Problem "${newProblemTitle}" added and attached!`);
-      setTimeout(() => setSuccessBanner(null), 4000);
+        // If a pattern was selected, attach it
+        if (newProblemPatternId) {
+          await apiClient(`/admin/patterns/${newProblemPatternId}/problems`, {
+            method: "POST",
+            body: JSON.stringify({
+              problemId: createdProb.id,
+              isCore: newProblemIsCore,
+            }),
+          }).catch(() => {});
+        }
 
-      setNewProblemTitle("");
-      setNewProblemUrl("");
-      setNewProblemExternalId("");
+        setShowProblemModal(false);
+        showSuccess(`Problem "${newProblemTitle}" created and attached!`);
+        setNewProblemTitle("");
+        setNewProblemUrl("");
+        setNewProblemExternalId("");
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to create problem");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to create problem");
     } finally {
       setIsSubmittingProblem(false);
     }
   };
 
-  const handleApprove = (id: string) => {
-    setPendingArticles((prev) => prev.filter((a) => a.id !== id));
+  // -------------------------------------------------------------
+  // HANDLERS: 6. UPDATE PROBLEM
+  // -------------------------------------------------------------
+  const handleUpdateProblem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProblem || !editingProblem.title.trim()) return;
+    setIsSubmittingProblem(true);
+
+    try {
+      const res = await apiClient<ProblemItem>(`/admin/problems/${editingProblem.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: editingProblem.title.trim(),
+          platform: editingProblem.platform?.trim() || undefined,
+          externalId: editingProblem.externalId?.trim() || undefined,
+          solveUrl: editingProblem.solveUrl.trim(),
+          difficulty: editingProblem.difficulty,
+        }),
+      });
+
+      if (res.success && res.data) {
+        setProblems((prev) => prev.map((p) => (p.id === editingProblem.id ? { ...p, ...res.data! } : p)));
+        setEditingProblem(null);
+        showSuccess(`Problem "${editingProblem.title}" successfully updated!`);
+      } else {
+        showError(res.error?.message || "Failed to update problem");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to update problem");
+    } finally {
+      setIsSubmittingProblem(false);
+    }
   };
 
-  const handleReject = (id: string) => {
-    setPendingArticles((prev) => prev.filter((a) => a.id !== id));
+  // -------------------------------------------------------------
+  // HANDLERS: 7. DELETE ANY ITEM (Topic, Pattern, Problem, Article)
+  // -------------------------------------------------------------
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      let endpoint = "";
+      if (itemToDelete.type === "topic") endpoint = `/admin/topics/${itemToDelete.id}`;
+      else if (itemToDelete.type === "pattern") endpoint = `/admin/patterns/${itemToDelete.id}`;
+      else if (itemToDelete.type === "problem") endpoint = `/admin/problems/${itemToDelete.id}`;
+      else if (itemToDelete.type === "article") endpoint = `/admin/articles/${itemToDelete.id}`;
+
+      const res = await apiClient(endpoint, { method: "DELETE" });
+
+      if (res.success) {
+        if (itemToDelete.type === "topic") {
+          setTopics((prev) => prev.filter((t) => t.id !== itemToDelete.id));
+        } else if (itemToDelete.type === "pattern") {
+          setPatterns((prev) => prev.filter((p) => p.id !== itemToDelete.id));
+        } else if (itemToDelete.type === "problem") {
+          setProblems((prev) => prev.filter((p) => p.id !== itemToDelete.id));
+        } else if (itemToDelete.type === "article") {
+          setPendingArticles((prev) => prev.filter((a) => a.id !== itemToDelete.id));
+        }
+
+        showSuccess(`${itemToDelete.type.toUpperCase()} "${itemToDelete.name}" deleted.`);
+        setItemToDelete(null);
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || `Failed to delete ${itemToDelete.type}`);
+      }
+    } catch (e: any) {
+      showError(e?.message || `Failed to delete ${itemToDelete.type}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // ARTICLE ACTIONS: Approve & Reject
+  // -------------------------------------------------------------
+  const handleApproveArticle = async (id: string) => {
+    try {
+      const res = await apiClient(`/admin/articles/${id}/publish`, { method: "POST" });
+      if (res.success) {
+        setPendingArticles((prev) => prev.filter((a) => a.id !== id));
+        showSuccess("Article approved and published to community!");
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to approve article");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to approve article");
+    }
+  };
+
+  const handleRejectArticle = async (id: string) => {
+    try {
+      const res = await apiClient(`/admin/articles/${id}/reject`, { method: "POST" });
+      if (res.success) {
+        setPendingArticles((prev) => prev.filter((a) => a.id !== id));
+        showSuccess("Article rejected.");
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to reject article");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to reject article");
+    }
   };
 
   const handleSwitchAccount = async () => {
@@ -448,97 +657,73 @@ export default function AdminPage() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
         <div className="rounded-2xl border border-border/80 bg-card p-8 max-w-sm w-full text-center space-y-4 shadow-lg">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary animate-pulse">
-            <Shield className="h-7 w-7" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Shield className="h-7 w-7 animate-pulse" />
           </div>
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-foreground">Verifying Administrator Access</h2>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Validating cryptographic security token and administrative permissions...
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span>Checking authorization policy</span>
-          </div>
+          <h2 className="text-xl font-bold">Verifying Administrator Privileges</h2>
+          <p className="text-xs text-muted-foreground">Checking session authorization against security gateway...</p>
+          <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
         </div>
       </div>
     );
   }
 
-  // 2. ACCESS DENIED SCREEN
+  // 2. DENIED / UNAUTHORIZED STATE
   if (isAdminVerified === false) {
     return (
-      <div className="min-h-[75vh] flex flex-col items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-6">
-          <Card className="border-border/80 shadow-2xl overflow-hidden bg-card text-center">
-            <div className="h-1.5 w-full bg-destructive" />
-
-            <CardHeader className="space-y-3 pb-4">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-xs">
-                <Lock className="h-8 w-8" />
-              </div>
-              <div className="space-y-1">
-                <Badge variant="outline" className="border-destructive/30 text-destructive gap-1 text-[11px] font-mono">
-                  <AlertTriangle className="h-3 w-3" /> ACCESS RESTRICTED
-                </Badge>
-                <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
-                  Valid Administrator Required
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
-                  Access to the PatternIQ Admin Console is strictly guarded. Only authenticated users with verified <strong>ADMIN</strong> roles may enter.
-                </CardDescription>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {verificationError && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive text-left leading-relaxed">
-                  {verificationError}
-                </div>
-              )}
-
-              <div className="space-y-2 pt-2">
-                <Link href="/admin/signin" className="block w-full">
-                  <Button className="w-full text-xs font-semibold h-10 gap-1.5">
-                    <Shield className="h-3.5 w-3.5" />
-                    <span>Sign In to Admin Portal</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-
-                <Link href="/admin/signup" className="block w-full">
-                  <Button variant="outline" className="w-full text-xs h-10 gap-1.5">
-                    <span>Enroll as Administrator</span>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
+        <div className="rounded-2xl border border-destructive/40 bg-card p-8 max-w-md w-full text-center space-y-5 shadow-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+            <Lock className="h-7 w-7" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Restricted Administrative Area</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {verificationError || "You must be signed in with an account having verified Administrator role to view this page."}
+          </p>
+          <div className="space-y-2 pt-2">
+            <Link href="/admin/signin" className="block w-full">
+              <Button className="w-full text-xs font-semibold h-10 gap-1.5 cursor-pointer">
+                <Shield className="h-3.5 w-3.5" />
+                <span>Sign In to Admin Portal</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
-
-  // 3. AUTHORIZED ADMIN CONSOLE
-  const currentAdmin = verifiedAdminUser || user;
-  const allProblems = patterns.flatMap((p) =>
-    p.problems.map((prob) => ({ ...prob, patternName: p.name, patternSlug: p.slug, topicName: p.topicName }))
-  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Platform Administration</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Platform Administration</h1>
+            <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 bg-emerald-500/10">
+              Live DB
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">
-            Manage curriculum tracks, patterns, canonical practice problems, and content governance.
+            Manage curriculum tracks, patterns, canonical practice problems, and content governance in real time.
           </p>
         </div>
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={loadAllAdminData}
+            disabled={isLoadingData}
+            className="gap-1.5 text-xs h-9 cursor-pointer"
+            title="Refresh live data"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoadingData && "animate-spin")} />
+            <span>Refresh</span>
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -572,7 +757,7 @@ export default function AdminPage() {
             variant="ghost"
             size="sm"
             onClick={handleSwitchAccount}
-            className="gap-1 text-xs text-muted-foreground hover:text-destructive h-9"
+            className="gap-1 text-xs text-muted-foreground hover:text-destructive h-9 cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sign Out</span>
@@ -580,35 +765,47 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* SUCCESS BANNER */}
+      {/* NOTIFICATION BANNERS */}
       {successBanner && (
         <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs font-semibold text-emerald-400 flex items-center justify-between animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" />
             <span>{successBanner}</span>
           </div>
-          <button onClick={() => setSuccessBanner(null)}>
+          <button onClick={() => setSuccessBanner(null)} className="cursor-pointer">
             <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
           </button>
         </div>
       )}
 
-      {/* OVERVIEW STATS ROW */}
+      {errorBanner && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs font-semibold text-destructive flex items-center justify-between animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>{errorBanner}</span>
+          </div>
+          <button onClick={() => setErrorBanner(null)} className="cursor-pointer">
+            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </button>
+        </div>
+      )}
+
+      {/* OVERVIEW STATS ROW (FROM LIVE DASHBOARD API) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Curriculum Tracks</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{topics.length}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registered Users</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{dashboardTotals.users}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-            <TrendingUp className="h-5 w-5" />
+            <Users className="h-5 w-5" />
           </div>
         </Card>
 
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Patterns</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{patterns.length}</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{dashboardTotals.patterns}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
             <Layers className="h-5 w-5" />
@@ -617,8 +814,8 @@ export default function AdminPage() {
 
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Catalog Problems</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{allProblems.length}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Problems</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{dashboardTotals.problems}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
             <FileText className="h-5 w-5" />
@@ -628,10 +825,10 @@ export default function AdminPage() {
         <Card className="p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pending Articles</p>
-            <p className="text-2xl font-bold font-mono text-amber-500">{pendingArticles.length}</p>
+            <p className="text-2xl font-bold font-mono text-amber-500">{dashboardTotals.pendingArticles}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-            <Users className="h-5 w-5" />
+            <MessageSquare className="h-5 w-5" />
           </div>
         </Card>
       </div>
@@ -641,17 +838,19 @@ export default function AdminPage() {
         <TabsList className="grid grid-cols-4 max-w-xl">
           <TabsTrigger value="topics">Topics ({topics.length})</TabsTrigger>
           <TabsTrigger value="patterns">Patterns ({patterns.length})</TabsTrigger>
-          <TabsTrigger value="problems">Problems ({allProblems.length})</TabsTrigger>
+          <TabsTrigger value="problems">Problems ({problems.length})</TabsTrigger>
           <TabsTrigger value="moderation">Articles ({pendingArticles.length})</TabsTrigger>
         </TabsList>
 
+        {/* ============================================================== */}
         {/* TAB 1: TOPICS INVENTORY */}
+        {/* ============================================================== */}
         <TabsContent value="topics" className="pt-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">Curriculum Topics</h2>
+              <h2 className="text-lg font-bold">Curriculum Topics ({topics.length})</h2>
               <p className="text-xs text-muted-foreground">
-                High-level subject areas (e.g. Array Patterns, Sliding Window, Dynamic Programming).
+                High-level tracks (e.g. Array Patterns, Sliding Window, Dynamic Programming).
               </p>
             </div>
             <Button
@@ -665,43 +864,79 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topics.map((t) => {
-              const trackPatterns = patterns.filter((p) => p.topicSlug === t.slug);
-              return (
-                <Card key={t.id} className="p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                      Track #{t.order}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {trackPatterns.length} Patterns
-                    </Badge>
+            {topics.length > 0 ? (
+              topics.map((t) => (
+                <Card key={t.id} className="p-5 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                        Order #{t.order}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="text-xs">
+                          {t._count?.patterns ?? 0} Patterns
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px]",
+                            t.published ? "text-emerald-500 border-emerald-500/30" : "text-amber-500 border-amber-500/30"
+                          )}
+                        >
+                          {t.published ? "PUBLISHED" : "DRAFT"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">{t.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        {t.description || "No description provided."}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">{t.name}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                      {t.description}
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground font-mono">slug: {t.slug}</span>
-                    <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/30">
-                      PUBLISHED
-                    </Badge>
+
+                  <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-mono truncate max-w-[120px]">{t.slug}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingTopic(t)}
+                        className="h-7 px-2 text-xs gap-1 cursor-pointer"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span>Edit</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setItemToDelete({ type: "topic", id: t.id, name: t.name })}
+                        className="h-7 px-2 text-xs gap-1 text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Delete</span>
+                      </Button>
+                    </div>
                   </div>
                 </Card>
-              );
-            })}
+              ))
+            ) : (
+              <Card className="col-span-full p-8 text-center text-muted-foreground text-sm border-dashed">
+                No topics in the database yet. Click &quot;Create New Topic&quot; to add your first track.
+              </Card>
+            )}
           </div>
         </TabsContent>
 
+        {/* ============================================================== */}
         {/* TAB 2: PATTERNS INVENTORY */}
+        {/* ============================================================== */}
         <TabsContent value="patterns" className="pt-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">Pattern Inventory</h2>
+              <h2 className="text-lg font-bold">Pattern Inventory ({patterns.length})</h2>
               <p className="text-xs text-muted-foreground">
-                Algorithmic problem-solving patterns complete with mental models, complexity, and templates.
+                All algorithmic problem-solving patterns complete with mental models, complexity, and templates.
               </p>
             </div>
             <Button
@@ -716,52 +951,81 @@ export default function AdminPage() {
 
           <Card>
             <div className="divide-y divide-border/60">
-              {patterns.map((pat) => (
-                <div
-                  key={pat.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold font-mono shrink-0">
-                      #{pat.number}
-                    </span>
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm truncate text-foreground">{pat.name}</span>
-                        <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
-                          {pat.difficulty}
-                        </Badge>
-                        <Badge variant="outline" className="text-[11px] font-mono">
-                          {pat.complexity.time}
-                        </Badge>
-                        <span className="text-xs text-amber-400 font-mono">
-                          {"★".repeat(pat.importance || 5)}
+              {patterns.length > 0 ? (
+                patterns.map((pat) => (
+                  <div
+                    key={pat.id}
+                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold font-mono shrink-0">
+                        #{pat.number}
+                      </span>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm truncate text-foreground">{pat.name}</span>
+                          <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
+                            {pat.difficulty}
+                          </Badge>
+                          {pat.timeComplexity && (
+                            <Badge variant="outline" className="text-[11px] font-mono">
+                              {pat.timeComplexity}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-amber-400 font-mono">
+                            {"★".repeat(pat.importance || 5)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground block truncate">
+                          Track: {pat.topic?.name || "Unassigned"} • {pat._count?.problems ?? 0} Problems Attached
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground block truncate">
-                        Track: {pat.topicName} • {pat.problems.length} Practice Problems Attached
-                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link href={`/patterns/${pat.slug}`} target="_blank">
+                        <Button size="sm" variant="ghost" className="text-xs h-7 px-2.5">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          <span>Preview</span>
+                        </Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingPattern(pat)}
+                        className="text-xs h-7 px-2.5 gap-1 cursor-pointer"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span>Edit</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setItemToDelete({ type: "pattern", id: pat.id, name: pat.name })}
+                        className="text-xs h-7 px-2.5 gap-1 text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Delete</span>
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Link href={`/patterns/${pat.slug}`}>
-                      <Button size="sm" variant="outline" className="text-xs h-7 px-2.5">
-                        <span>Preview Pattern</span>
-                      </Button>
-                    </Link>
-                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                  No patterns found in the database.
                 </div>
-              ))}
+              )}
             </div>
           </Card>
         </TabsContent>
 
+        {/* ============================================================== */}
         {/* TAB 3: PROBLEMS INVENTORY */}
+        {/* ============================================================== */}
         <TabsContent value="problems" className="pt-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">Practice Problems Inventory</h2>
+              <h2 className="text-lg font-bold">Practice Problems Inventory ({problems.length})</h2>
               <p className="text-xs text-muted-foreground">
                 Canonical LeetCode and platform problems attached to curriculum patterns.
               </p>
@@ -778,51 +1042,81 @@ export default function AdminPage() {
 
           <Card>
             <div className="divide-y divide-border/60">
-              {allProblems.map((prob) => (
-                <div
-                  key={prob.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
-                >
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-foreground">{prob.title}</span>
-                      <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
-                        {prob.difficulty}
-                      </Badge>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {prob.platform}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Track: <strong className="text-foreground">{prob.topicName}</strong> &bull; Pattern:{" "}
-                      <strong className="text-foreground">{prob.patternName}</strong>
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={prob.solveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline h-7 px-2"
+              {problems.length > 0 ? (
+                problems.map((prob) => {
+                  const linkedPatternName = prob.patterns?.[0]?.pattern?.name;
+                  return (
+                    <div
+                      key={prob.id}
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors"
                     >
-                      <span>Open Problem</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground">{prob.title}</span>
+                          <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
+                            {prob.difficulty}
+                          </Badge>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {prob.platform || "LeetCode"}
+                          </span>
+                        </div>
+                        {linkedPatternName && (
+                          <p className="text-xs text-muted-foreground">
+                            Pattern: <strong className="text-foreground">{linkedPatternName}</strong>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={prob.solveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline h-7 px-2"
+                        >
+                          <span>Solve URL</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingProblem(prob)}
+                          className="text-xs h-7 px-2.5 gap-1 cursor-pointer"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          <span>Edit</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setItemToDelete({ type: "problem", id: prob.id, name: prob.title })}
+                          className="text-xs h-7 px-2.5 gap-1 text-destructive hover:bg-destructive/10 cursor-pointer"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Delete</span>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                  No problems registered in the database.
                 </div>
-              ))}
+              )}
             </div>
           </Card>
         </TabsContent>
 
+        {/* ============================================================== */}
         {/* TAB 4: ARTICLE MODERATION */}
+        {/* ============================================================== */}
         <TabsContent value="moderation" className="pt-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold">Community Submissions Queue</h2>
               <p className="text-xs text-muted-foreground">
-                Review and approve technical deep-dive guides contributed by community members.
+                Review, approve, or reject technical guides submitted by students and community members.
               </p>
             </div>
             <Badge variant="outline" className="text-xs">
@@ -841,21 +1135,23 @@ export default function AdminPage() {
                           {art.category}
                         </Badge>
                         <span className="text-xs text-muted-foreground font-mono">
-                          Submitted {art.submittedAt} by {art.author}
+                          Submitted by {art.author?.name || "Community Member"}
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-foreground">{art.title}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {art.excerpt}
-                      </p>
+                      {art.excerpt && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {art.excerpt}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <Button
                         size="sm"
                         variant="default"
-                        onClick={() => handleApprove(art.id)}
-                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => handleApproveArticle(art.id)}
+                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         <span>Approve & Publish</span>
@@ -863,11 +1159,20 @@ export default function AdminPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleReject(art.id)}
-                        className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRejectArticle(art.id)}
+                        className="gap-1.5 text-xs text-amber-500 hover:bg-amber-500/10 cursor-pointer"
                       >
                         <XCircle className="h-3.5 w-3.5" />
                         <span>Reject</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setItemToDelete({ type: "article", id: art.id, name: art.title })}
+                        className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
                       </Button>
                     </div>
                   </div>
@@ -877,7 +1182,7 @@ export default function AdminPage() {
               <Card className="p-12 text-center text-sm text-muted-foreground border-dashed">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
                 <p className="font-semibold text-foreground">Moderation queue is clean!</p>
-                <p className="text-xs mt-1">All community technical articles have been reviewed.</p>
+                <p className="text-xs mt-1">No community articles currently pending review.</p>
               </Card>
             )}
           </div>
@@ -885,7 +1190,7 @@ export default function AdminPage() {
       </Tabs>
 
       {/* ========================================================================= */}
-      {/* 1. MODERN MODAL: ADD NEW TOPIC */}
+      {/* 1. MODAL: CREATE TOPIC */}
       {/* ========================================================================= */}
       {showTopicModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -913,7 +1218,7 @@ export default function AdminPage() {
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Topic Name</label>
                 <Input
-                  placeholder="e.g. Monotonic Stack & Queue"
+                  placeholder="e.g. Dynamic Programming"
                   required
                   value={newTopicName}
                   onChange={(e) => setNewTopicName(e.target.value)}
@@ -923,7 +1228,7 @@ export default function AdminPage() {
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Description</label>
                 <Textarea
-                  placeholder="Techniques for maintaining order invariants and boundary queries in linear time."
+                  placeholder="Techniques for subproblem memoization and state transitions."
                   rows={3}
                   value={newTopicDescription}
                   onChange={(e) => setNewTopicDescription(e.target.value)}
@@ -950,7 +1255,6 @@ export default function AdminPage() {
                   <label className="font-semibold text-foreground">Curriculum Order</label>
                   <Input
                     type="number"
-                    required
                     value={newTopicOrder}
                     onChange={(e) => setNewTopicOrder(Number(e.target.value))}
                   />
@@ -960,13 +1264,13 @@ export default function AdminPage() {
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
-                  id="topicPublished"
+                  id="topicPub"
                   checked={newTopicPublished}
                   onChange={(e) => setNewTopicPublished(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                  className="rounded border-input text-primary focus:ring-primary"
                 />
-                <label htmlFor="topicPublished" className="font-medium text-foreground cursor-pointer">
-                  Publish immediately (Visible in student learning tracks)
+                <label htmlFor="topicPub" className="text-xs text-muted-foreground select-none cursor-pointer">
+                  Publish immediately (visible to all students)
                 </label>
               </div>
 
@@ -976,13 +1280,13 @@ export default function AdminPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowTopicModal(false)}
-                  disabled={isSubmittingTopic}
+                  className="text-xs"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" disabled={isSubmittingTopic} className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>{isSubmittingTopic ? "Creating..." : "Save Topic"}</span>
+                <Button type="submit" size="sm" disabled={isSubmittingTopic} className="text-xs gap-1.5">
+                  {isSubmittingTopic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderPlus className="h-3.5 w-3.5" />}
+                  <span>Save Topic</span>
                 </Button>
               </div>
             </form>
@@ -991,22 +1295,122 @@ export default function AdminPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. MODERN STUDIO MODAL: ADD NEW PATTERN (DB Schema Complete) */}
+      {/* 2. MODAL: EDIT TOPIC */}
+      {/* ========================================================================= */}
+      {editingTopic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 font-bold">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Edit Topic: {editingTopic.name}</h2>
+                  <p className="text-xs text-muted-foreground">Modify topic parameters and visibility</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTopic(null)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateTopic} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Topic Name</label>
+                <Input
+                  required
+                  value={editingTopic.name}
+                  onChange={(e) => setEditingTopic({ ...editingTopic, name: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Description</label>
+                <Textarea
+                  rows={3}
+                  value={editingTopic.description || ""}
+                  onChange={(e) => setEditingTopic({ ...editingTopic, description: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Track Icon</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={editingTopic.icon || "Target"}
+                    onChange={(e) => setEditingTopic({ ...editingTopic, icon: e.target.value })}
+                  >
+                    {TOPIC_ICON_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Curriculum Order</label>
+                  <Input
+                    type="number"
+                    value={editingTopic.order}
+                    onChange={(e) => setEditingTopic({ ...editingTopic, order: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editTopicPub"
+                  checked={editingTopic.published}
+                  onChange={(e) => setEditingTopic({ ...editingTopic, published: e.target.checked })}
+                  className="rounded border-input text-primary focus:ring-primary"
+                />
+                <label htmlFor="editTopicPub" className="text-xs text-muted-foreground select-none cursor-pointer">
+                  Published (visible to students)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingTopic(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingTopic} className="text-xs gap-1.5">
+                  {isSubmittingTopic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
+                  <span>Update Topic</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MODAL: CREATE PATTERN */}
       {/* ========================================================================= */}
       {showPatternModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border bg-muted/20">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold">
                   <Layers className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Pattern Creation Studio</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Define mental models, complexities, pseudocode, and multi-language templates
-                  </p>
+                  <h2 className="text-lg font-bold text-foreground">Create New Pattern</h2>
+                  <p className="text-xs text-muted-foreground">Add an algorithmic pattern with full mental models and code templates</p>
                 </div>
               </div>
               <button
@@ -1014,126 +1418,88 @@ export default function AdminPage() {
                 onClick={() => setShowPatternModal(false)}
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Modal Sub-Tabs */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-border bg-muted/10 text-xs">
-              <button
-                type="button"
-                onClick={() => setPatternModalTab("meta")}
-                className={cn(
-                  "pb-2.5 px-3 font-semibold transition-all border-b-2 cursor-pointer",
-                  patternModalTab === "meta"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                1. Core Metadata & Scope
-              </button>
-              <button
-                type="button"
-                onClick={() => setPatternModalTab("intuition")}
-                className={cn(
-                  "pb-2.5 px-3 font-semibold transition-all border-b-2 cursor-pointer",
-                  patternModalTab === "intuition"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                2. Mental Model & Rules
-              </button>
-              <button
-                type="button"
-                onClick={() => setPatternModalTab("code")}
-                className={cn(
-                  "pb-2.5 px-3 font-semibold transition-all border-b-2 cursor-pointer",
-                  patternModalTab === "code"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                3. Code Studio & Pseudocode
-              </button>
-            </div>
+            <form onSubmit={handleCreatePattern} className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+              <Tabs value={patternModalTab} onValueChange={(v) => setPatternModalTab(v as any)} className="w-full">
+                <TabsList className="grid grid-cols-3 w-full mb-4">
+                  <TabsTrigger value="meta">1. Meta & Topic</TabsTrigger>
+                  <TabsTrigger value="intuition">2. Intuition & Rules</TabsTrigger>
+                  <TabsTrigger value="code">3. Code Templates</TabsTrigger>
+                </TabsList>
 
-            {/* Modal Body Form */}
-            <form onSubmit={handleCreatePattern} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-              {/* TAB 1: METADATA */}
-              {patternModalTab === "meta" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* TAB 1: Meta */}
+                <TabsContent value="meta" className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="font-semibold text-foreground">Topic Name</label>
-                      <Input
-                        placeholder="e.g. Two Pointers, Graphs, DP"
+                      <label className="font-semibold text-foreground">Curriculum Topic / Track</label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                        value={newPatternTopicId}
+                        onChange={(e) => setNewPatternTopicId(e.target.value)}
                         required
-                        value={newPatternTopicName}
-                        onChange={(e) => setNewPatternTopicName(e.target.value)}
-                      />
+                      >
+                        {topics.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="font-semibold text-foreground">Sequential Number</label>
+                      <label className="font-semibold text-foreground">Pattern Number (#)</label>
                       <Input
                         type="number"
-                        required
                         value={newPatternNumber}
                         onChange={(e) => setNewPatternNumber(Number(e.target.value))}
+                        required
                       />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-foreground">Difficulty Level</label>
-                      <div className="grid grid-cols-3 gap-1">
-                        {(["EASY", "MEDIUM", "HARD"] as const).map((diff) => (
-                          <button
-                            key={diff}
-                            type="button"
-                            onClick={() => setNewPatternDifficulty(diff)}
-                            className={cn(
-                              "h-9 rounded-md border text-xs font-semibold transition-all cursor-pointer",
-                              newPatternDifficulty === diff
-                                ? diff === "EASY"
-                                  ? "bg-emerald-500/20 text-emerald-500 border-emerald-500"
-                                  : diff === "MEDIUM"
-                                  ? "bg-amber-500/20 text-amber-500 border-amber-500"
-                                  : "bg-rose-500/20 text-rose-500 border-rose-500"
-                                : "border-border text-muted-foreground hover:bg-muted"
-                            )}
-                          >
-                            {diff}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="font-semibold text-foreground">Pattern Name</label>
                     <Input
-                      placeholder="e.g. Fast & Slow Pointers: Cycle Finding"
+                      placeholder="e.g. Sliding Window Maximum"
                       required
                       value={newPatternName}
                       onChange={(e) => setNewPatternName(e.target.value)}
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Short Summary (Display on Cards)</label>
-                    <Input
-                      placeholder="Move two pointers at different speeds to detect cycles and midpoints in O(1) space."
-                      value={newPatternShortDesc}
-                      onChange={(e) => setNewPatternShortDesc(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="font-semibold text-foreground">Difficulty</label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                        value={newPatternDifficulty}
+                        onChange={(e) => setNewPatternDifficulty(e.target.value as any)}
+                      >
+                        <option value="EASY">EASY</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="HARD">HARD</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-semibold text-foreground">Importance Rating (1-5)</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={newPatternImportance}
+                        onChange={(e) => setNewPatternImportance(Number(e.target.value))}
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="font-semibold text-foreground">Time Complexity</label>
                       <Input
-                        placeholder="O(N)"
                         value={newPatternTime}
                         onChange={(e) => setNewPatternTime(e.target.value)}
                       />
@@ -1141,201 +1507,121 @@ export default function AdminPage() {
                     <div className="space-y-1.5">
                       <label className="font-semibold text-foreground">Space Complexity</label>
                       <Input
-                        placeholder="O(1)"
                         value={newPatternSpace}
                         onChange={(e) => setNewPatternSpace(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-foreground">Importance (1 - 5 Stars)</label>
-                      <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setNewPatternImportance(star)}
-                            className="text-amber-400 hover:scale-110 transition-transform cursor-pointer"
-                          >
-                            <Star
-                              className={cn(
-                                "h-4 w-4",
-                                star <= newPatternImportance ? "fill-current text-amber-400" : "text-muted-foreground/30"
-                              )}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* TAB 2: INTUITION & RULES */}
-              {patternModalTab === "intuition" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span>The Mental Model (Intuition)</span>
-                    </label>
+                    <label className="font-semibold text-foreground">Short Summary</label>
                     <Textarea
-                      placeholder="Explain the underlying visual intuition. Why does this eliminate brute-force computation?"
-                      rows={3}
+                      placeholder="One-line breakdown of when to apply this technique."
+                      rows={2}
+                      value={newPatternShortDesc}
+                      onChange={(e) => setNewPatternShortDesc(e.target.value)}
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* TAB 2: Intuition */}
+                <TabsContent value="intuition" className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-foreground">Mental Model & Core Intuition</label>
+                    <Textarea
+                      placeholder="Explain the underlying visual or mathematical concept..."
+                      rows={4}
                       value={newPatternIntuition}
                       onChange={(e) => setNewPatternIntuition(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Core Algorithmic Idea</label>
-                    <Textarea
-                      placeholder="Key state invariants to maintain during loop execution..."
-                      rows={2}
-                      value={newPatternCoreIdea}
-                      onChange={(e) => setNewPatternCoreIdea(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Target className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>Interview Identification Signal (When to recognize this)</span>
-                    </label>
+                    <label className="font-semibold text-foreground">Interview Identification Rule</label>
                     <Input
-                      placeholder="e.g. Sorted array + 'Find pairs matching target sum' -> Two pointers"
+                      placeholder="e.g. Sorted array + subarray constraints -> Two Pointer or Sliding Window"
                       value={newPatternInterviewRule}
                       onChange={(e) => setNewPatternInterviewRule(e.target.value)}
                     />
                   </div>
-                </div>
-              )}
 
-              {/* TAB 3: CODE STUDIO */}
-              {patternModalTab === "code" && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  {/* Pseudocode Editor */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="font-semibold text-foreground flex items-center gap-1.5">
-                        <Terminal className="h-4 w-4 text-primary" />
-                        <span>Language-Agnostic Pseudocode</span>
-                      </label>
-                      <span className="text-[11px] text-muted-foreground font-mono">pseudocode.algo</span>
-                    </div>
-                    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] p-3 shadow-inner">
-                      <Textarea
-                        rows={5}
-                        className="font-mono text-xs text-[#c9d1d9] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 leading-relaxed resize-y"
-                        value={newPatternPseudocode}
-                        onChange={(e) => setNewPatternPseudocode(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-foreground">Pseudocode Blueprint</label>
+                    <Textarea
+                      rows={5}
+                      className="font-mono text-[11px]"
+                      value={newPatternPseudocode}
+                      onChange={(e) => setNewPatternPseudocode(e.target.value)}
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* TAB 3: Code Templates */}
+                <TabsContent value="code" className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2">
+                    {(["python", "cpp", "java", "javascript"] as const).map((lang) => (
+                      <Button
+                        key={lang}
+                        type="button"
+                        size="sm"
+                        variant={templateLangTab === lang ? "default" : "outline"}
+                        onClick={() => setTemplateLangTab(lang)}
+                        className="text-xs h-7 uppercase"
+                      >
+                        {lang}
+                      </Button>
+                    ))}
                   </div>
 
-                  {/* Multi-Language Code Templates */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="font-semibold text-foreground flex items-center gap-1.5">
-                        <Code2 className="h-4 w-4 text-primary" />
-                        <span>Production Code Templates</span>
-                      </label>
-                      <div className="flex items-center gap-1 bg-muted p-0.5 rounded-lg">
-                        {(["python", "cpp", "java", "javascript"] as const).map((lang) => (
-                          <button
-                            key={lang}
-                            type="button"
-                            onClick={() => setTemplateLangTab(lang)}
-                            className={cn(
-                              "px-2.5 py-1 rounded-md text-[11px] font-mono uppercase font-semibold transition-colors cursor-pointer",
-                              templateLangTab === lang
-                                ? "bg-card text-foreground shadow-xs"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            {lang}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] p-4 shadow-inner">
-                      {templateLangTab === "python" && (
-                        <Textarea
-                          rows={6}
-                          className="font-mono text-xs text-[#c9d1d9] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 leading-relaxed resize-y"
-                          value={newPatternPy}
-                          onChange={(e) => setNewPatternPy(e.target.value)}
-                        />
-                      )}
-                      {templateLangTab === "cpp" && (
-                        <Textarea
-                          rows={6}
-                          className="font-mono text-xs text-[#c9d1d9] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 leading-relaxed resize-y"
-                          value={newPatternCpp}
-                          onChange={(e) => setNewPatternCpp(e.target.value)}
-                        />
-                      )}
-                      {templateLangTab === "java" && (
-                        <Textarea
-                          rows={6}
-                          className="font-mono text-xs text-[#c9d1d9] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 leading-relaxed resize-y"
-                          value={newPatternJava}
-                          onChange={(e) => setNewPatternJava(e.target.value)}
-                        />
-                      )}
-                      {templateLangTab === "javascript" && (
-                        <Textarea
-                          rows={6}
-                          className="font-mono text-xs text-[#c9d1d9] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 leading-relaxed resize-y"
-                          value={newPatternJs}
-                          onChange={(e) => setNewPatternJs(e.target.value)}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Modal Footer Controls */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="flex items-center gap-2">
-                  {patternModalTab !== "meta" && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPatternModalTab(patternModalTab === "code" ? "intuition" : "meta")}
-                    >
-                      &larr; Previous Step
-                    </Button>
+                  {templateLangTab === "python" && (
+                    <Textarea
+                      rows={9}
+                      className="font-mono text-[11px]"
+                      value={newPatternPy}
+                      onChange={(e) => setNewPatternPy(e.target.value)}
+                    />
                   )}
-                  {patternModalTab !== "code" && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPatternModalTab(patternModalTab === "meta" ? "intuition" : "code")}
-                    >
-                      Next Step &rarr;
-                    </Button>
+                  {templateLangTab === "cpp" && (
+                    <Textarea
+                      rows={9}
+                      className="font-mono text-[11px]"
+                      value={newPatternCpp}
+                      onChange={(e) => setNewPatternCpp(e.target.value)}
+                    />
                   )}
-                </div>
+                  {templateLangTab === "java" && (
+                    <Textarea
+                      rows={9}
+                      className="font-mono text-[11px]"
+                      value={newPatternJava}
+                      onChange={(e) => setNewPatternJava(e.target.value)}
+                    />
+                  )}
+                  {templateLangTab === "javascript" && (
+                    <Textarea
+                      rows={9}
+                      className="font-mono text-[11px]"
+                      value={newPatternJs}
+                      onChange={(e) => setNewPatternJs(e.target.value)}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPatternModal(false)}
-                    disabled={isSubmittingPattern}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" disabled={isSubmittingPattern} className="gap-1.5">
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>{isSubmittingPattern ? "Publishing..." : "Publish Pattern"}</span>
-                  </Button>
-                </div>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPatternModal(false)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingPattern} className="text-xs gap-1.5">
+                  {isSubmittingPattern ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  <span>Save Pattern</span>
+                </Button>
               </div>
             </form>
           </div>
@@ -1343,7 +1629,169 @@ export default function AdminPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MODERN MODAL: ADD NEW PROBLEM (DB Schema Complete) */}
+      {/* 4. MODAL: EDIT PATTERN */}
+      {/* ========================================================================= */}
+      {editingPattern && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Edit Pattern: {editingPattern.name}</h2>
+                  <p className="text-xs text-muted-foreground">Modify pattern formulas, intuition, and templates</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPattern(null)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePattern} className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Topic</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={editingPattern.topicId}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, topicId: e.target.value })}
+                    required
+                  >
+                    {topics.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Number (#)</label>
+                  <Input
+                    type="number"
+                    value={editingPattern.number}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, number: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Pattern Name</label>
+                <Input
+                  required
+                  value={editingPattern.name}
+                  onChange={(e) => setEditingPattern({ ...editingPattern, name: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={editingPattern.difficulty}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, difficulty: e.target.value as any })}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Importance (1-5)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={editingPattern.importance}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, importance: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Time Complexity</label>
+                  <Input
+                    value={editingPattern.timeComplexity || ""}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, timeComplexity: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Space Complexity</label>
+                  <Input
+                    value={editingPattern.spaceComplexity || ""}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, spaceComplexity: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Short Summary</label>
+                <Textarea
+                  rows={2}
+                  value={editingPattern.shortDescription || ""}
+                  onChange={(e) => setEditingPattern({ ...editingPattern, shortDescription: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Core Intuition</label>
+                <Textarea
+                  rows={3}
+                  value={editingPattern.intuition || ""}
+                  onChange={(e) => setEditingPattern({ ...editingPattern, intuition: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Interview Rule</label>
+                <Input
+                  value={editingPattern.interviewRule || ""}
+                  onChange={(e) => setEditingPattern({ ...editingPattern, interviewRule: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Pseudocode</label>
+                <Textarea
+                  rows={4}
+                  className="font-mono text-[11px]"
+                  value={editingPattern.pseudocode || ""}
+                  onChange={(e) => setEditingPattern({ ...editingPattern, pseudocode: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingPattern(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingPattern} className="text-xs gap-1.5">
+                  {isSubmittingPattern ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
+                  <span>Update Pattern</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. MODAL: CREATE PROBLEM */}
       {/* ========================================================================= */}
       {showProblemModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -1354,8 +1802,8 @@ export default function AdminPage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Add Practice Question</h2>
-                  <p className="text-xs text-muted-foreground">Attach a canonical LeetCode problem to a pattern</p>
+                  <h2 className="text-lg font-bold text-foreground">Add Practice Problem</h2>
+                  <p className="text-xs text-muted-foreground">Register a canonical question and link it to a pattern</p>
                 </div>
               </div>
               <button
@@ -1371,13 +1819,13 @@ export default function AdminPage() {
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Attach to Pattern</label>
                 <select
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground font-medium"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
                   value={newProblemPatternId}
                   onChange={(e) => setNewProblemPatternId(e.target.value)}
                 >
                   {patterns.map((p) => (
                     <option key={p.id} value={p.id}>
-                      #{p.number} - {p.name} ({p.topicName})
+                      #{p.number} {p.name}
                     </option>
                   ))}
                 </select>
@@ -1386,64 +1834,41 @@ export default function AdminPage() {
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Problem Title</label>
                 <Input
-                  placeholder="e.g. Next Greater Element I"
+                  placeholder="e.g. 3Sum (LeetCode #15)"
                   required
                   value={newProblemTitle}
                   onChange={(e) => setNewProblemTitle(e.target.value)}
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-foreground">Platform / Identifier</label>
+                  <label className="font-semibold text-foreground">Platform</label>
                   <Input
-                    placeholder="LeetCode #496"
-                    required
+                    placeholder="LeetCode / GFG / Codeforces"
                     value={newProblemPlatform}
                     onChange={(e) => setNewProblemPlatform(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-foreground">External Problem ID</label>
-                  <Input
-                    placeholder="496"
-                    value={newProblemExternalId}
-                    onChange={(e) => setNewProblemExternalId(e.target.value)}
-                  />
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={newProblemDifficulty}
+                    onChange={(e) => setNewProblemDifficulty(e.target.value as any)}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Difficulty Rating</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(["EASY", "MEDIUM", "HARD"] as const).map((diff) => (
-                    <button
-                      key={diff}
-                      type="button"
-                      onClick={() => setNewProblemDifficulty(diff)}
-                      className={cn(
-                        "h-8 rounded-md border text-xs font-semibold transition-all cursor-pointer",
-                        newProblemDifficulty === diff
-                          ? diff === "EASY"
-                            ? "bg-emerald-500/20 text-emerald-500 border-emerald-500"
-                            : diff === "MEDIUM"
-                            ? "bg-amber-500/20 text-amber-500 border-amber-500"
-                            : "bg-rose-500/20 text-rose-500 border-rose-500"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {diff}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Official Problem URL</label>
+                <label className="font-semibold text-foreground">Solve URL</label>
                 <Input
-                  type="url"
-                  placeholder="https://leetcode.com/problems/next-greater-element-i/"
+                  placeholder="https://leetcode.com/problems/3sum/"
                   required
                   value={newProblemUrl}
                   onChange={(e) => setNewProblemUrl(e.target.value)}
@@ -1453,13 +1878,13 @@ export default function AdminPage() {
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
-                  id="problemIsCore"
+                  id="probCore"
                   checked={newProblemIsCore}
                   onChange={(e) => setNewProblemIsCore(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                  className="rounded border-input text-primary focus:ring-primary"
                 />
-                <label htmlFor="problemIsCore" className="font-medium text-foreground cursor-pointer">
-                  Mark as Core Essential Problem (Recommended first solve)
+                <label htmlFor="probCore" className="text-xs text-muted-foreground select-none cursor-pointer">
+                  Mark as Core Canonical Problem
                 </label>
               </div>
 
@@ -1469,16 +1894,150 @@ export default function AdminPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowProblemModal(false)}
-                  disabled={isSubmittingProblem}
+                  className="text-xs"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" disabled={isSubmittingProblem} className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>{isSubmittingProblem ? "Linking..." : "Attach Problem"}</span>
+                <Button type="submit" size="sm" disabled={isSubmittingProblem} className="text-xs gap-1.5">
+                  {isSubmittingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  <span>Save Problem</span>
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODAL: EDIT PROBLEM */}
+      {/* ========================================================================= */}
+      {editingProblem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Edit Problem: {editingProblem.title}</h2>
+                  <p className="text-xs text-muted-foreground">Modify title, difficulty, or external link</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingProblem(null)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProblem} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Problem Title</label>
+                <Input
+                  required
+                  value={editingProblem.title}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Platform</label>
+                  <Input
+                    value={editingProblem.platform || ""}
+                    onChange={(e) => setEditingProblem({ ...editingProblem, platform: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={editingProblem.difficulty}
+                    onChange={(e) => setEditingProblem({ ...editingProblem, difficulty: e.target.value as any })}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Solve URL</label>
+                <Input
+                  required
+                  value={editingProblem.solveUrl}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, solveUrl: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingProblem(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isSubmittingProblem} className="text-xs gap-1.5">
+                  {isSubmittingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
+                  <span>Update Problem</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 7. DELETION CONFIRMATION MODAL */}
+      {/* ========================================================================= */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-2xl border border-destructive/40 bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  Confirm Deletion
+                </h3>
+                <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-foreground/90 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border">
+              Are you sure you want to delete {itemToDelete.type} &quot;<strong>{itemToDelete.name}</strong>&quot;? All associated relations will be removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setItemToDelete(null)}
+                disabled={isDeleting}
+                className="text-xs cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="text-xs gap-1.5 cursor-pointer"
+              >
+                {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                <span>Permanently Delete</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

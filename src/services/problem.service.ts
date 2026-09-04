@@ -32,7 +32,18 @@ interface ProblemInput {
 }
 
 export async function adminListProblems() {
-  return prisma.problem.findMany({ orderBy: { createdAt: "desc" } });
+  return prisma.problem.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      patterns: {
+        include: {
+          pattern: {
+            select: { id: true, name: true, slug: true },
+          },
+        },
+      },
+    },
+  });
 }
 
 export async function adminGetProblem(id: string) {

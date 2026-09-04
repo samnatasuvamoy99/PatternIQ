@@ -129,6 +129,18 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-2">
+              {user.role === "ADMIN" && (
+                <Link href="/admin">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Admin</span>
+                  </Button>
+                </Link>
+              )}
               <Link href="/dashboard">
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <LayoutDashboard className="h-4 w-4" />
@@ -214,17 +226,29 @@ export function Navbar() {
           </div>
           <div className="mt-4 border-t border-border pt-4">
             {user ? (
-              <div className="flex items-center justify-between">
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-medium text-foreground hover:underline"
-                >
-                  Dashboard ({user.name})
-                </Link>
-                <Button size="sm" variant="outline" onClick={() => setShowLogoutConfirm(true)}>
-                  Log Out
-                </Button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-medium text-foreground hover:underline"
+                  >
+                    Dashboard ({user.name})
+                  </Link>
+                  <Button size="sm" variant="outline" onClick={() => setShowLogoutConfirm(true)}>
+                    Log Out
+                  </Button>
+                </div>
+                {user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 text-sm font-medium text-primary hover:underline pt-1"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Admin Console</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">

@@ -66,7 +66,10 @@ interface PatternInput {
 export async function adminListPatterns() {
   return prisma.pattern.findMany({
     orderBy: [{ topicId: "asc" }, { order: "asc" }],
-    include: { topic: { select: { name: true, slug: true } } },
+    include: {
+      topic: { select: { id: true, name: true, slug: true } },
+      _count: { select: { problems: true } },
+    },
   });
 }
 
