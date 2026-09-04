@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { apiClient } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,26 +95,65 @@ export default function ProblemsPage() {
   const [problemStates, setProblemStates] = useState<Record<string, { status: string; isStarred: boolean }>>(() => {
     const initial: Record<string, { status: string; isStarred: boolean }> = {};
     MOCK_PATTERNS.forEach((pat) => {
-      pat.problems.forEach((prob, idx) => {
+      pat.problems.forEach((prob) => {
         initial[prob.id] = {
-          status: prob.status || "NOT_ATTEMPTED",
-          isStarred: idx === 0, // demo default star first problem
+          status: "NOT_ATTEMPTED",
+          isStarred: false,
         };
       });
     });
     return initial;
   });
 
-  // Toggle problem solved checkmark
-  const toggleSolved = (probId: string) => {
-    setProblemStates((prev) => {
-      const current = prev[probId] || { status: "NOT_ATTEMPTED", isStarred: false };
-      const nextStatus = current.status === "SOLVED" ? "NOT_ATTEMPTED" : "SOLVED";
-      return {
-        ...prev,
-        [probId]: { ...current, status: nextStatus },
-      };
-    });
+  // Fetch actual per-user progress from backend
+  useEffect(() => {
+    async function loadUserProgress() {
+      try {
+        const res = await apiClient<{
+          problemProgress?: Array<{ problemId: string; status: string }>;
+        }>("/progress");
+        if (res.success && res.data?.problemProgress) {
+          setProblemStates((prev) => {
+            const next = { ...prev };
+            res.data?.problemProgress?.forEach((p) => {
+              next[p.problemId] = {
+                status: p.status,
+                isStarred: prev[p.problemId]?.isStarred || false,
+              };
+            });
+            return next;
+          });
+        }
+      } catch (e) {
+        console.error("Failed to load user progress", e);
+      }
+    }
+    loadUserProgress();
+  }, []);
+
+  // Toggle problem solved checkmark and persist per-user in database
+  const toggleSolved = async (probId: string) => {
+    const current = problemStates[probId] || { status: "NOT_ATTEMPTED", isStarred: false };
+    const nextStatus = current.status === "SOLVED" ? "NOT_ATTEMPTED" : "SOLVED";
+
+    // Optimistic UI update
+    setProblemStates((prev) => ({
+      ...prev,
+      [probId]: { ...current, status: nextStatus },
+    }));
+
+    // Persist per-user progress to DB
+    try {
+      await apiClient("/progress/problems/toggle", {
+        method: "POST",
+        body: JSON.stringify({
+          problemId: probId,
+          status: nextStatus,
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to persist problem status", e);
+    }
   };
 
   // Toggle star / bookmark on problem

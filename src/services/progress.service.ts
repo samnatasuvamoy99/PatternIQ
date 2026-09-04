@@ -18,6 +18,8 @@ export async function getProgressOverview(userId: string) {
     inProgressPatterns: patternProgress.filter((p) => p.status === "IN_PROGRESS").length,
     totalProblems,
     solvedProblems: problemProgress.filter((p) => p.status === "SOLVED").length,
+    problemProgress,
+    patternProgress,
   };
 }
 
@@ -157,3 +159,98 @@ export async function markProblemSolved(userId: string, problemId: string, hints
     return { problemProgress, updatedPatterns };
   });
 }
+
+export async function toggleProblemProgress(
+  userId: string,
+  problemId: string,
+  targetStatus?: "SOLVED" | "ATTEMPTED" | "NOT_ATTEMPTED"
+) {
+  let problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    include: { patterns: { select: { patternId: true } } },
+  });
+
+  if (!problem) {
+    problem = await prisma.problem.findFirst({
+      where: { OR: [{ slug: problemId }, { title: problemId }] },
+      include: { patterns: { select: { patternId: true } } },
+    });
+  }
+
+  if (!problem) {
+    problem = await prisma.problem.create({
+      data: {
+        id: problemId,
+        title: problemId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        slug: problemId.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        solveUrl: "https://leetcode.com",
+        difficulty: "MEDIUM",
+      },
+      include: { patterns: { select: { patternId: true } } },
+    });
+  }
+
+  const existing = await prisma.userProblemProgress.findUnique({
+    where: { userId_problemId: { userId, problemId: problem.id } },
+  });
+
+  let nextStatus: "SOLVED" | "ATTEMPTED" | "NOT_ATTEMPTED";
+  if (targetStatus) {
+    nextStatus = targetStatus;
+  } else {
+    nextStatus = existing?.status === "SOLVED" ? "NOT_ATTEMPTED" : "SOLVED";
+  }
+
+  if (nextStatus === "SOLVED") {
+    return markProblemSolved(userId, problem.id);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updatedProblemProgress = await tx.userProblemProgress.upsert({
+      where: { userId_problemId: { userId, problemId: problem.id } },
+      update: {
+        status: nextStatus,
+        solvedAt: null,
+      },
+      create: {
+        userId,
+        problemId: problem.id,
+        status: nextStatus,
+      },
+    });
+
+    for (const { patternId } of problem.patterns) {
+      const totalProblems = await tx.patternProblem.count({ where: { patternId } });
+      const solvedProblemIds = await tx.userProblemProgress.findMany({
+        where: {
+          userId,
+          status: "SOLVED",
+          problem: { patterns: { some: { patternId } } },
+        },
+        select: { problemId: true },
+      });
+      const completedProblems = solvedProblemIds.length;
+      const isNowComplete = totalProblems > 0 && completedProblems >= totalProblems;
+
+      await tx.userPatternProgress.upsert({
+        where: { userId_patternId: { userId, patternId } },
+        update: {
+          completedProblems,
+          totalProblems,
+          status: isNowComplete ? "COMPLETED" : completedProblems > 0 ? "IN_PROGRESS" : "NOT_STARTED",
+        },
+        create: {
+          userId,
+          patternId,
+          completedProblems,
+          totalProblems,
+          status: isNowComplete ? "COMPLETED" : "IN_PROGRESS",
+          startedAt: new Date(),
+        },
+      });
+    }
+
+    return { problemProgress: updatedProblemProgress, updatedPatterns: [] };
+  });
+}
+

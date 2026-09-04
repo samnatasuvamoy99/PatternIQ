@@ -108,22 +108,23 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
   };
 
   const toggleProblemStatus = async (problemId: string) => {
+    let nextStatus: "SOLVED" | "ATTEMPTED" = "SOLVED";
     setProblems((prev) =>
       prev.map((prob) => {
         if (prob.id === problemId) {
-          const nextStatus = prob.status === "SOLVED" ? "ATTEMPTED" : "SOLVED";
+          nextStatus = prob.status === "SOLVED" ? "ATTEMPTED" : "SOLVED";
           return { ...prob, status: nextStatus };
         }
         return prob;
       })
     );
 
-    // Call progress API in background
-    apiClient("/progress/problem", {
+    // Call progress API to persist in DB
+    apiClient("/progress/problems/toggle", {
       method: "POST",
       body: JSON.stringify({
         problemId,
-        status: "SOLVED",
+        status: nextStatus,
       }),
     }).catch(() => {});
   };
