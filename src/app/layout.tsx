@@ -2,6 +2,7 @@ import "./globals.css";
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -29,18 +30,45 @@ export const metadata = {
   description: "Learn Data Structures and Algorithms systematically by pattern, intuition, code templates, and automated spaced repetition.",
 };
 
+const THEME_INIT_SCRIPT = `
+(function() {
+  try {
+    var stored = localStorage.getItem('patterniq_theme');
+    var isDark = false;
+    if (stored === 'dark' || stored === 'light') {
+      isDark = stored === 'dark';
+    } else {
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      isDark = prefersDark;
+      localStorage.setItem('patterniq_theme', isDark ? 'dark' : 'light');
+    }
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("font-sans scroll-smooth", inter.variable, plusJakarta.variable, jetbrainsMono.variable)}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased flex flex-col selection:bg-primary/20 selection:text-primary">
-        <AuthProvider>
-          <Navbar />
-          <div className="flex-1">{children}</div>
-          <Footer />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Navbar />
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

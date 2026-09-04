@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { Button } from "@/components/ui/button";
 import {
   Brain,
@@ -11,12 +12,14 @@ import {
   Layers,
   Repeat,
   FileText,
-  Shield,
+  Search,
   LogOut,
   Moon,
   Sun,
   Menu,
   X,
+  Shield,
+  User as UserIcon,
   Lock,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -24,10 +27,9 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { name: "Patterns", href: "/patterns", icon: Layers },
-  { name: "Problems", href: "/problems", icon: FileText },
-  { name: "Revision", href: "/revision", icon: Repeat },
-  { name: "Community", href: "/articles", icon: FileText },
+  { href: "/patterns", name: "Patterns", label: "Patterns", icon: Layers },
+  { href: "/problems", name: "Problems", label: "Problems", icon: FileText },
+  { href: "/articles", name: "Articles", label: "Articles", icon: BookOpen },
 ];
 
 const AUTH_ROUTES = [
@@ -41,40 +43,23 @@ const AUTH_ROUTES = [
 export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [isDark, setIsDark] = useState(false);
+  const { isDark, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Do not render navbar on authentication pages
   const isAuthPage = AUTH_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
 
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window !== "undefined") {
-      const isDarkMode = document.documentElement.classList.contains("dark");
-      setIsDark(isDarkMode);
-    }
-  }, []);
-
   if (isAuthPage) {
     return null;
   }
-
-  const toggleTheme = () => {
-    if (typeof document !== "undefined") {
-      const root = document.documentElement;
-      if (root.classList.contains("dark")) {
-        root.classList.remove("dark");
-        setIsDark(false);
-      } else {
-        root.classList.add("dark");
-        setIsDark(true);
-      }
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md transition-colors">
