@@ -9,7 +9,20 @@ export async function getTodaysRevisions(userId: string) {
 
   return prisma.revision.findMany({
     where: { userId, status: "PENDING", scheduledAt: { lte: endOfToday } },
-    include: { pattern: { select: { id: true, name: true, slug: true } } },
+    include: {
+      pattern: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          difficulty: true,
+          intuition: true,
+          coreIdea: true,
+          pseudocode: true,
+          topic: { select: { id: true, name: true, slug: true } },
+        },
+      },
+    },
     orderBy: { scheduledAt: "asc" },
   });
 }

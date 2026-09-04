@@ -5,7 +5,9 @@ import { uniquePatternSlug } from "@/lib/slug";
 const patternListSelect = {
   id: true, slug: true, name: true, number: true, difficulty: true,
   importance: true, shortDescription: true, topicId: true,
+  timeComplexity: true, spaceComplexity: true,
   topic: { select: { id: true, name: true, slug: true } },
+  _count: { select: { problems: true } },
 };
 
 export async function listPublicPatterns(params: {

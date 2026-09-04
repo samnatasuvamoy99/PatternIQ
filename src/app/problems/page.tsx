@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   FileText,
   Search,
@@ -26,6 +25,7 @@ import {
   GitBranch,
   Sparkles,
   Trophy,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,7 @@ const TOPIC_ICONS: Record<string, any> = {
   "binary-search": Search,
   "tree-bfs-dfs": GitBranch,
   "dynamic-programming": Layers,
+  "array": Target,
 };
 
 interface ProblemItem {
@@ -75,47 +76,77 @@ export default function ProblemsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL"); // ALL, SOLVED, UNSOLVED, STARRED
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Expanded topics state (default first 2 topics expanded)
-  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>(() => ({
-    [MOCK_TOPICS[0].slug]: true,
-    [MOCK_TOPICS[1]?.slug || ""]: true,
-  }));
+  const [rawTopics, setRawTopics] = useState<TopicWithPatterns[]>([]);
+  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
+  const [expandedPatterns, setExpandedPatterns] = useState<Record<string, boolean>>({});
+  const [problemStates, setProblemStates] = useState<Record<string, { status: string; isStarred: boolean }>>({});
 
-  // Expanded patterns state (default all expanded under opened topics)
-  const [expandedPatterns, setExpandedPatterns] = useState<Record<string, boolean>>(() => {
-    const defaultExp: Record<string, boolean> = {};
-    MOCK_PATTERNS.forEach((p) => {
-      defaultExp[p.id] = true;
-    });
-    return defaultExp;
-  });
-
-  // State to track problem statuses and starred problems
-  const [problemStates, setProblemStates] = useState<Record<string, { status: string; isStarred: boolean }>>(() => {
-    const initial: Record<string, { status: string; isStarred: boolean }> = {};
-    MOCK_PATTERNS.forEach((pat) => {
-      pat.problems.forEach((prob) => {
-        initial[prob.id] = {
-          status: "NOT_ATTEMPTED",
-          isStarred: false,
-        };
-      });
-    });
-    return initial;
-  });
-
-  // Fetch actual per-user progress from backend
+  // Fetch live problems catalog and user progress on mount
   useEffect(() => {
-    async function loadUserProgress() {
+    async function loadCatalogAndProgress() {
+      setIsLoading(true);
       try {
-        const res = await apiClient<{
-          problemProgress?: Array<{ problemId: string; status: string }>;
-        }>("/progress");
-        if (res.success && res.data?.problemProgress) {
+        const [catalogRes, progressRes] = await Promise.all([
+          apiClient<any[]>("/problems/catalog"),
+          apiClient<{ problemProgress?: Array<{ problemId: string; status: string }> }>("/progress"),
+        ]);
+
+        if (catalogRes.success && Array.isArray(catalogRes.data)) {
+          const loadedTopics: TopicWithPatterns[] = catalogRes.data.map((topic: any) => ({
+            id: topic.id,
+            name: topic.name,
+            slug: topic.slug,
+            description: topic.description || "",
+            order: topic.order || 0,
+            patterns: (topic.patterns || []).map((pat: any) => ({
+              id: pat.id,
+              number: pat.number,
+              name: pat.name,
+              slug: pat.slug,
+              topicSlug: topic.slug,
+              difficulty: pat.difficulty || "MEDIUM",
+              summary: pat.shortDescription || pat.whatIsThis || "",
+              complexity: {
+                time: pat.timeComplexity || "O(N)",
+                space: pat.spaceComplexity || "O(1)",
+              },
+              problems: (pat.problems || []).map((pItem: any, idx: number) => {
+                const prob = pItem.problem || pItem;
+                return {
+                  id: prob.id,
+                  title: prob.title,
+                  slug: prob.slug,
+                  difficulty: prob.difficulty || "EASY",
+                  platform: prob.platform || "LeetCode",
+                  solveUrl: prob.solveUrl || `https://leetcode.com/problemset/all/`,
+                  orderIndex: pItem.order || idx + 1,
+                  status: "NOT_ATTEMPTED",
+                };
+              }),
+            })),
+          }));
+
+          setRawTopics(loadedTopics);
+
+          // Default expand the first 2 topics and patterns
+          const expT: Record<string, boolean> = {};
+          const expP: Record<string, boolean> = {};
+          loadedTopics.forEach((t, i) => {
+            if (i < 2) expT[t.slug] = true;
+            t.patterns.forEach((p) => {
+              expP[p.id] = true;
+            });
+          });
+          setExpandedTopics(expT);
+          setExpandedPatterns(expP);
+        }
+
+        if (progressRes.success && progressRes.data?.problemProgress) {
           setProblemStates((prev) => {
             const next = { ...prev };
-            res.data?.problemProgress?.forEach((p) => {
+            progressRes.data?.problemProgress?.forEach((p) => {
               next[p.problemId] = {
                 status: p.status,
                 isStarred: prev[p.problemId]?.isStarred || false,
@@ -124,11 +155,14 @@ export default function ProblemsPage() {
             return next;
           });
         }
-      } catch (e) {
-        console.error("Failed to load user progress", e);
+      } catch (err) {
+        console.error("Failed to load catalog or progress", err);
+      } finally {
+        setIsLoading(false);
       }
     }
-    loadUserProgress();
+
+    loadCatalogAndProgress();
   }, []);
 
   // Toggle problem solved checkmark and persist per-user in database
@@ -178,8 +212,10 @@ export default function ProblemsPage() {
   const expandAll = () => {
     const allT: Record<string, boolean> = {};
     const allP: Record<string, boolean> = {};
-    MOCK_TOPICS.forEach((t) => (allT[t.slug] = true));
-    MOCK_PATTERNS.forEach((p) => (allP[p.id] = true));
+    rawTopics.forEach((t) => {
+      allT[t.slug] = true;
+      t.patterns.forEach((p) => (allP[p.id] = true));
+    });
     setExpandedTopics(allT);
     setExpandedPatterns(allP);
   };
@@ -191,8 +227,8 @@ export default function ProblemsPage() {
 
   // Build the hierarchical Topic -> Pattern -> Problems tree with live states
   const hierarchy: TopicWithPatterns[] = useMemo(() => {
-    return MOCK_TOPICS.map((topic) => {
-      const topicPats = MOCK_PATTERNS.filter((p) => p.topicSlug === topic.slug).map((pat) => {
+    return rawTopics.map((topic) => {
+      const topicPats = topic.patterns.map((pat) => {
         const enrichedProbs: ProblemItem[] = pat.problems.map((prob) => {
           const state = problemStates[prob.id] || { status: prob.status, isStarred: false };
           return {
@@ -203,28 +239,17 @@ export default function ProblemsPage() {
         });
 
         return {
-          id: pat.id,
-          number: pat.number,
-          name: pat.name,
-          slug: pat.slug,
-          topicSlug: pat.topicSlug,
-          difficulty: pat.difficulty,
-          summary: pat.summary,
-          complexity: pat.complexity,
+          ...pat,
           problems: enrichedProbs,
         };
       });
 
       return {
-        id: topic.id,
-        name: topic.name,
-        slug: topic.slug,
-        description: topic.description,
-        order: topic.order,
+        ...topic,
         patterns: topicPats,
       };
     });
-  }, [problemStates]);
+  }, [rawTopics, problemStates]);
 
   // Compute overall global progress statistics
   const stats = useMemo(() => {
@@ -308,406 +333,430 @@ export default function ProblemsPage() {
   return (
     <AuthGuard>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-      {/* Header */}
-      <div className="border-b border-border/60 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Curated Problems Catalog</h1>
-        <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-          Organized hierarchically by <strong>Topics</strong> &rarr; <strong>Patterns</strong> &rarr; <strong>Problems</strong>.
-        </p>
-      </div>
-
-      {/* OVERALL PROGRESS BANNER */}
-      <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-muted/20 to-primary/5 p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm font-bold">
-              <Trophy className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                Your Practice Completion
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground font-mono">{stats.solved}</span> of{" "}
-                <span className="font-mono">{stats.total}</span> problems solved ({stats.percentage}%)
-              </p>
-            </div>
-          </div>
-
-          {/* Difficulty breakdown pills */}
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-muted-foreground">Easy:</span>
-              <span className="font-mono font-semibold">{stats.easySolved}</span>
-            </div>
-            <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              <span className="text-muted-foreground">Medium:</span>
-              <span className="font-mono font-semibold">{stats.mediumSolved}</span>
-            </div>
-            <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
-              <span className="text-muted-foreground">Hard:</span>
-              <span className="font-mono font-semibold">{stats.hardSolved}</span>
-            </div>
-          </div>
+        {/* Header */}
+        <div className="border-b border-border/60 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Curated Problems Catalog</h1>
+          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+            Organized hierarchically by <strong>Topics</strong> &rarr; <strong>Patterns</strong> &rarr; <strong>Problems</strong>.
+          </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${stats.percentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* FILTER & CONTROLS BAR */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Search Input */}
-        <div className="relative w-full lg:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search problems, patterns, topics..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* Filters and View Controls */}
-        <div className="flex items-center gap-3 flex-wrap justify-between lg:justify-end">
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 text-xs">
-            {(["ALL", "UNSOLVED", "SOLVED", "STARRED"] as const).map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={cn(
-                  "px-2.5 py-1 rounded-md transition-colors cursor-pointer font-medium",
-                  statusFilter === st
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {st === "STARRED" ? "★ Starred" : st.charAt(0) + st.slice(1).toLowerCase()}
-              </button>
-            ))}
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading problems catalog...</p>
           </div>
+        ) : rawTopics.length === 0 ? (
+          /* Empty State when no topics/problems exist in database */
+          <Card className="p-12 text-center space-y-4 border-dashed">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <FileText className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-semibold">No problems available</h2>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              There are currently no topics or problems in the catalog. Check back soon or consult the dashboard.
+            </p>
+            <div className="pt-2">
+              <Link href="/dashboard">
+                <Button variant="outline">Back to Dashboard</Button>
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          <>
+            {/* OVERALL PROGRESS BANNER */}
+            <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-muted/20 to-primary/5 p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm font-bold">
+                    <Trophy className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                      Your Practice Completion
+                    </h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      <span className="font-semibold text-foreground font-mono">{stats.solved}</span> of{" "}
+                      <span className="font-mono">{stats.total}</span> problems solved ({stats.percentage}%)
+                    </p>
+                  </div>
+                </div>
 
-          {/* Difficulty Filter */}
-          <div className="flex items-center gap-1">
-            {["ALL", "EASY", "MEDIUM", "HARD"].map((diff) => (
-              <Button
-                key={diff}
-                variant={difficultyFilter === diff ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDifficultyFilter(diff)}
-                className="text-xs h-8 px-2.5"
-              >
-                {diff}
-              </Button>
-            ))}
-          </div>
+                {/* Difficulty breakdown pills */}
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="text-muted-foreground">Easy:</span>
+                    <span className="font-mono font-semibold">{stats.easySolved}</span>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="text-muted-foreground">Medium:</span>
+                    <span className="font-mono font-semibold">{stats.mediumSolved}</span>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                    <span className="text-muted-foreground">Hard:</span>
+                    <span className="font-mono font-semibold">{stats.hardSolved}</span>
+                  </div>
+                </div>
+              </div>
 
-          {/* Expand / Collapse All */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground border-l border-border/80 pl-3">
-            <button
-              onClick={expandAll}
-              className="hover:text-foreground underline-offset-4 hover:underline cursor-pointer"
-            >
-              Expand All
-            </button>
-            <span>•</span>
-            <button
-              onClick={collapseAll}
-              className="hover:text-foreground underline-offset-4 hover:underline cursor-pointer"
-            >
-              Collapse All
-            </button>
-          </div>
-        </div>
-      </div>
+              {/* Progress Bar */}
+              <div className="space-y-1.5">
+                <Progress value={stats.percentage} className="h-2.5 bg-muted/60" />
+                <div className="flex justify-between text-[11px] text-muted-foreground">
+                  <span>{stats.percentage}% complete</span>
+                  <span>{stats.total - stats.solved} problems remaining</span>
+                </div>
+              </div>
+            </div>
 
-      {/* HIERARCHICAL TOPIC -> PATTERN -> PROBLEMS LIST */}
-      <div className="space-y-6">
-        {filteredHierarchy.length > 0 ? (
-          filteredHierarchy.map((topic) => {
-            const isTopicExpanded = !!expandedTopics[topic.slug];
-            const Icon = TOPIC_ICONS[topic.slug] || Layers;
+            {/* FILTER AND SEARCH BAR */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Search input */}
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search problems, topics, platforms..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-            // Compute topic stats
-            let topicTotalProbs = 0;
-            let topicSolvedProbs = 0;
-            topic.patterns.forEach((pat) => {
-              pat.problems.forEach((prob) => {
-                topicTotalProbs++;
-                if (prob.status === "SOLVED") topicSolvedProbs++;
-              });
-            });
-            const topicPct =
-              topicTotalProbs > 0 ? Math.round((topicSolvedProbs / topicTotalProbs) * 100) : 0;
-
-            return (
-              <div
-                key={topic.id}
-                className={cn(
-                  "rounded-2xl border transition-all duration-200 overflow-hidden bg-card",
-                  isTopicExpanded
-                    ? "border-border shadow-sm ring-1 ring-border/50"
-                    : "border-border/80 hover:border-primary/40"
-                )}
-              >
-                {/* 1. TOPIC HEADER ROW */}
-                <button
-                  type="button"
-                  onClick={() => toggleTopic(topic.slug)}
-                  className="w-full text-left p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors border-b border-border/60"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div
+              {/* Filter Buttons */}
+              <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                {/* Difficulty Filter */}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/20 shrink-0">
+                  {["ALL", "EASY", "MEDIUM", "HARD"].map((diff) => (
+                    <button
+                      key={diff}
+                      type="button"
+                      onClick={() => setDifficultyFilter(diff)}
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold transition-colors",
-                        isTopicExpanded
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-muted text-muted-foreground"
+                        "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                        difficultyFilter === diff
+                          ? "bg-background text-foreground shadow-xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Icon className="h-5 w-5" />
-                    </div>
+                      {diff}
+                    </button>
+                  ))}
+                </div>
 
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-primary uppercase tracking-wider font-mono">
-                          Track #{topic.order}
-                        </span>
-                        <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
-                          {topic.name}
-                        </h2>
-                        <Badge variant="secondary" className="text-xs">
-                          {topic.patterns.length} Patterns
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {topic.description}
-                      </p>
-                    </div>
-                  </div>
+                {/* Status Filter */}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/20 shrink-0">
+                  {[
+                    { label: "All", val: "ALL" },
+                    { label: "Solved", val: "SOLVED" },
+                    { label: "Unsolved", val: "UNSOLVED" },
+                    { label: "Starred", val: "STARRED" },
+                  ].map((st) => (
+                    <button
+                      key={st.val}
+                      type="button"
+                      onClick={() => setStatusFilter(st.val)}
+                      className={cn(
+                        "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+                        statusFilter === st.val
+                          ? "bg-background text-foreground shadow-xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
 
-                  {/* Right Progress & Chevron */}
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-24 hidden sm:block">
-                        <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500 rounded-full transition-all"
-                            style={{ width: `${topicPct}%` }}
-                          />
+                {/* Expand / Collapse Controls */}
+                <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
+                  <Button variant="ghost" size="sm" onClick={expandAll} className="text-xs h-8 px-2.5">
+                    Expand All
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={collapseAll} className="text-xs h-8 px-2.5">
+                    Collapse
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* HIERARCHICAL TOPIC / PATTERN / PROBLEM ACCORDIONS */}
+            <div className="space-y-6">
+              {filteredHierarchy.length > 0 ? (
+                filteredHierarchy.map((topic) => {
+                  const TopicIcon = TOPIC_ICONS[topic.slug] || Layers;
+                  const isTopicExpanded = !!expandedTopics[topic.slug];
+
+                  // Calculate topic completion stats
+                  let topicTotal = 0;
+                  let topicSolved = 0;
+                  topic.patterns.forEach((pat) => {
+                    pat.problems.forEach((pr) => {
+                      topicTotal++;
+                      if (pr.status === "SOLVED") topicSolved++;
+                    });
+                  });
+                  const topicPct = topicTotal > 0 ? Math.round((topicSolved / topicTotal) * 100) : 0;
+
+                  return (
+                    <div
+                      key={topic.id}
+                      className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs transition-all"
+                    >
+                      {/* TOPIC HEADER ACCORDION TRIGGER */}
+                      <button
+                        type="button"
+                        onClick={() => toggleTopic(topic.slug)}
+                        className="w-full flex items-center justify-between p-4 sm:p-5 bg-muted/10 hover:bg-muted/30 transition-colors border-b border-border/60 text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                            <TopicIcon className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base sm:text-lg font-bold text-foreground truncate">
+                                {topic.name}
+                              </h3>
+                              <Badge variant="outline" className="text-[11px] shrink-0 font-mono">
+                                {topic.patterns.length} patterns
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate max-w-md sm:max-w-xl">
+                              {topic.description}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-xs font-mono text-muted-foreground font-semibold">
-                        {topicSolvedProbs}/{topicTotalProbs} Solved
-                      </span>
-                    </div>
 
-                    <div
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-transform duration-200",
-                        isTopicExpanded ? "bg-primary/10 text-primary rotate-180 border-primary/30" : "hover:bg-muted"
-                      )}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </div>
-                  </div>
-                </button>
+                        {/* Right: Progress bar & Chevron */}
+                        <div className="flex items-center gap-4 shrink-0 pl-2">
+                          <div className="hidden md:flex flex-col items-end gap-1 w-32">
+                            <div className="flex justify-between w-full text-[11px]">
+                              <span className="text-muted-foreground">{topicPct}%</span>
+                              <span className="font-mono font-medium">{topicSolved}/{topicTotal}</span>
+                            </div>
+                            <Progress value={topicPct} className="h-1.5 w-full bg-muted/60" />
+                          </div>
 
-                {/* 2. TOPIC BODY: LIST OF PATTERNS */}
-                {isTopicExpanded && (
-                  <div className="p-4 sm:p-6 space-y-5 bg-muted/5 animate-in slide-in-from-top-1 duration-200">
-                    {topic.patterns.length > 0 ? (
-                      topic.patterns.map((pattern) => {
-                        const isPatternExpanded = !!expandedPatterns[pattern.id];
-                        const patSolved = pattern.problems.filter((p) => p.status === "SOLVED").length;
-
-                        return (
                           <div
-                            key={pattern.id}
-                            className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-xs"
+                            className={cn(
+                              "h-8 w-8 rounded-lg flex items-center justify-center bg-muted/40 text-muted-foreground transition-transform duration-200",
+                              isTopicExpanded && "rotate-180 text-foreground bg-muted/80"
+                            )}
                           >
-                            {/* PATTERN HEADER ROW */}
-                            <button
-                              type="button"
-                              onClick={() => togglePattern(pattern.id)}
-                              className="w-full text-left p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card hover:bg-muted/30 transition-colors select-none cursor-pointer border-b border-border/50"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary text-xs font-bold font-mono">
-                                  #{pattern.number}
-                                </span>
+                            <ChevronDown className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </button>
 
-                                <div className="space-y-0.5 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="text-sm sm:text-base font-bold text-foreground">
-                                      {pattern.name}
-                                    </h3>
-                                    <Badge variant={pattern.difficulty === "EASY" ? "easy" : "medium"}>
-                                      {pattern.difficulty}
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[11px] font-mono">
-                                      {pattern.complexity.time}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
+                      {/* TOPIC BODY (Patterns list) */}
+                      {isTopicExpanded && (
+                        <div className="p-4 sm:p-5 space-y-4 bg-background/50">
+                          {topic.patterns.length > 0 ? (
+                            topic.patterns.map((pat) => {
+                              const isPatternExpanded = !!expandedPatterns[pat.id];
+                              const patSolvedCount = pat.problems.filter((pr) => pr.status === "SOLVED").length;
+                              const isAllPatternSolved =
+                                pat.problems.length > 0 && patSolvedCount === pat.problems.length;
 
-                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                                  <span className="text-foreground font-semibold">{patSolved}</span> of{" "}
-                                  <span>{pattern.problems.length} solved</span>
-                                </div>
-
-                                <Link
-                                  href={`/patterns/${pattern.slug}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium mr-1"
-                                >
-                                  <span>Study Pattern</span>
-                                </Link>
-
+                              return (
                                 <div
+                                  key={pat.id}
                                   className={cn(
-                                    "flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-transform duration-200",
-                                    isPatternExpanded ? "rotate-180 text-primary" : ""
+                                    "rounded-xl border transition-all overflow-hidden",
+                                    isAllPatternSolved
+                                      ? "border-emerald-500/30 bg-emerald-500/[0.02]"
+                                      : "border-border/70 bg-card/60"
                                   )}
                                 >
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* 3. LIST OF QUESTIONS / PROBLEMS UNDER PATTERN */}
-                            {isPatternExpanded && (
-                              <div className="divide-y divide-border/50 bg-background/50">
-                                {pattern.problems.length > 0 ? (
-                                  pattern.problems.map((prob) => {
-                                    const isSolved = prob.status === "SOLVED";
-
-                                    return (
-                                      <div
-                                        key={prob.id}
-                                        className={cn(
-                                          "p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
-                                          isSolved ? "bg-emerald-500/5" : "hover:bg-muted/30"
-                                        )}
+                                  {/* PATTERN HEADER */}
+                                  <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20 border-b border-border/40">
+                                    {/* Left: Number, Name, Complexity */}
+                                    <div className="flex items-start sm:items-center gap-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => togglePattern(pat.id)}
+                                        className="mt-0.5 sm:mt-0 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-mono text-xs font-bold hover:bg-primary/20 transition-colors cursor-pointer"
+                                        title={isPatternExpanded ? "Collapse pattern" : "Expand pattern"}
                                       >
-                                        {/* Left: Checkmark + Title + Platform */}
-                                        <div className="flex items-start sm:items-center gap-3 min-w-0">
-                                          {/* CHECKMARK OPTION */}
-                                          <button
-                                            type="button"
-                                            onClick={() => toggleSolved(prob.id)}
-                                            className={cn(
-                                              "mt-0.5 sm:mt-0 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-all cursor-pointer",
-                                              isSolved
-                                                ? "bg-emerald-500 border-emerald-500 text-white shadow-xs"
-                                                : "border-border hover:border-emerald-500/60 bg-background text-transparent hover:text-muted-foreground/30"
-                                            )}
-                                            title={isSolved ? "Mark as unsolved" : "Mark as solved"}
+                                        #{pat.number}
+                                      </button>
+
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <Link
+                                            href={`/patterns/${pat.slug}`}
+                                            className="text-sm sm:text-base font-bold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
                                           >
-                                            <CheckCircle2 className="h-4 w-4" />
-                                          </button>
-
-                                          {/* STAR / BOOKMARK OPTION */}
-                                          <button
-                                            type="button"
-                                            onClick={() => toggleStarred(prob.id)}
-                                            className={cn(
-                                              "flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors cursor-pointer",
-                                              prob.isStarred
-                                                ? "text-amber-400 hover:text-amber-500"
-                                                : "text-muted-foreground/40 hover:text-amber-400"
-                                            )}
-                                            title={prob.isStarred ? "Remove from starred" : "Star problem"}
-                                          >
-                                            <Star className={cn("h-4 w-4", prob.isStarred && "fill-current")} />
-                                          </button>
-
-                                          <div className="space-y-0.5 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <span
-                                                className={cn(
-                                                  "text-sm font-semibold transition-all",
-                                                  isSolved
-                                                    ? "line-through text-muted-foreground"
-                                                    : "text-foreground"
-                                                )}
-                                              >
-                                                {prob.title}
-                                              </span>
-                                              <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
-                                                {prob.difficulty}
-                                              </Badge>
-                                            </div>
-                                            <span className="text-xs font-mono text-muted-foreground block">
-                                              {prob.platform}
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        {/* Right: Solved status + START BUTTON */}
-                                        <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pl-9 sm:pl-0">
-                                          {isSolved && (
-                                            <Badge variant="solved" className="text-[11px] gap-1 py-0.5">
-                                              <CheckCircle2 className="h-3 w-3" /> Solved
+                                            <span>{pat.name}</span>
+                                            <ExternalLink className="h-3.5 w-3.5 opacity-50" />
+                                          </Link>
+                                          <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
+                                            {pat.difficulty}
+                                          </Badge>
+                                          {isAllPatternSolved && (
+                                            <Badge variant="solved" className="text-[10px] py-0 px-1.5">
+                                              Mastered
                                             </Badge>
                                           )}
-
-                                          {/* START / SOLVE BUTTON */}
-                                          <a
-                                            href={prob.solveUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-xs transition-all cursor-pointer"
-                                            title="Open problem in LeetCode"
-                                          >
-                                            <Play className="h-3 w-3 fill-current" />
-                                            <span>Start</span>
-                                            <ExternalLink className="h-3 w-3 opacity-70" />
-                                          </a>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 font-mono">
+                                          <span>Time: {pat.complexity.time}</span>
+                                          <span>•</span>
+                                          <span>Space: {pat.complexity.space}</span>
                                         </div>
                                       </div>
-                                    );
-                                  })
-                                ) : (
-                                  <div className="p-4 text-center text-xs text-muted-foreground">
-                                    No problems match your filter under this pattern.
+                                    </div>
+
+                                    {/* Right: Solved fraction & toggle accordion button */}
+                                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                      <span className="text-xs font-mono font-medium text-muted-foreground">
+                                        {patSolvedCount} / {pat.problems.length} solved
+                                      </span>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => togglePattern(pat.id)}
+                                        className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                                      >
+                                        <span>{isPatternExpanded ? "Hide" : "Show"}</span>
+                                        <ChevronDown
+                                          className={cn(
+                                            "h-3.5 w-3.5 transition-transform duration-200",
+                                            isPatternExpanded && "rotate-180"
+                                          )}
+                                        />
+                                      </Button>
+                                    </div>
                                   </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-6 text-center text-xs text-muted-foreground">
-                        No patterns or problems match your search criteria.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <Card className="p-12 text-center text-muted-foreground text-sm border-dashed">
-            <p>No questions found matching your filter criteria.</p>
-            <p className="text-xs mt-1">Try resetting the search query or difficulty filters.</p>
-          </Card>
+
+                                  {/* PATTERN PROBLEMS LIST */}
+                                  {isPatternExpanded && (
+                                    <div className="divide-y divide-border/40">
+                                      {pat.problems.length > 0 ? (
+                                        pat.problems.map((prob) => {
+                                          const isSolved = prob.status === "SOLVED";
+
+                                          return (
+                                            <div
+                                              key={prob.id}
+                                              className={cn(
+                                                "p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
+                                                isSolved ? "bg-emerald-500/5" : "hover:bg-muted/30"
+                                              )}
+                                            >
+                                              {/* Left: Checkmark + Title + Platform */}
+                                              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                                                {/* CHECKMARK OPTION */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => toggleSolved(prob.id)}
+                                                  className={cn(
+                                                    "mt-0.5 sm:mt-0 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-all cursor-pointer",
+                                                    isSolved
+                                                      ? "bg-emerald-500 border-emerald-500 text-white shadow-xs"
+                                                      : "border-border hover:border-emerald-500/60 bg-background text-transparent hover:text-muted-foreground/30"
+                                                  )}
+                                                  title={isSolved ? "Mark as unsolved" : "Mark as solved"}
+                                                >
+                                                  <CheckCircle2 className="h-4 w-4" />
+                                                </button>
+
+                                                {/* STAR / BOOKMARK OPTION */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => toggleStarred(prob.id)}
+                                                  className={cn(
+                                                    "flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors cursor-pointer",
+                                                    prob.isStarred
+                                                      ? "text-amber-400 hover:text-amber-500"
+                                                      : "text-muted-foreground/40 hover:text-amber-400"
+                                                  )}
+                                                  title={prob.isStarred ? "Remove from starred" : "Star problem"}
+                                                >
+                                                  <Star className={cn("h-4 w-4", prob.isStarred && "fill-current")} />
+                                                </button>
+
+                                                <div className="space-y-0.5 min-w-0">
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <span
+                                                      className={cn(
+                                                        "text-sm font-semibold transition-all",
+                                                        isSolved
+                                                          ? "line-through text-muted-foreground"
+                                                          : "text-foreground"
+                                                      )}
+                                                    >
+                                                      {prob.title}
+                                                    </span>
+                                                    <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
+                                                      {prob.difficulty}
+                                                    </Badge>
+                                                  </div>
+                                                  <span className="text-xs font-mono text-muted-foreground block">
+                                                    {prob.platform}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* Right: Solved status + START BUTTON */}
+                                              <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pl-9 sm:pl-0">
+                                                {isSolved && (
+                                                  <Badge variant="solved" className="text-[11px] gap-1 py-0.5">
+                                                    <CheckCircle2 className="h-3 w-3" /> Solved
+                                                  </Badge>
+                                                )}
+
+                                                {/* START / SOLVE BUTTON */}
+                                                <a
+                                                  href={prob.solveUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                                                  title="Open problem in LeetCode"
+                                                >
+                                                  <Play className="h-3 w-3 fill-current" />
+                                                  <span>Start</span>
+                                                  <ExternalLink className="h-3 w-3 opacity-70" />
+                                                </a>
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      ) : (
+                                        <div className="p-4 text-center text-xs text-muted-foreground">
+                                          No problems match your filter under this pattern.
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="p-6 text-center text-xs text-muted-foreground">
+                              No patterns or problems match your search criteria.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <Card className="p-12 text-center text-muted-foreground text-sm border-dashed">
+                  <p>No questions found matching your filter criteria.</p>
+                  <p className="text-xs mt-1">Try resetting the search query or difficulty filters.</p>
+                </Card>
+              )}
+            </div>
+          </>
         )}
       </div>
-    </div>
     </AuthGuard>
   );
 }

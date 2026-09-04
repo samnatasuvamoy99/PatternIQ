@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { apiClient } from "@/lib/api-client";
-import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   Layers,
   Search,
@@ -68,22 +67,8 @@ function PatternsContent() {
   const searchParams = useSearchParams();
   const initialTopic = searchParams.get("topic");
 
-  const [topics, setTopics] = useState<UnifiedTopic[]>(MOCK_TOPICS);
-  const [patterns, setPatterns] = useState<UnifiedPattern[]>(
-    MOCK_PATTERNS.map((p) => ({
-      id: p.id,
-      number: p.number,
-      name: p.name,
-      slug: p.slug,
-      topicSlug: p.topicSlug,
-      topicName: p.topicName,
-      difficulty: p.difficulty,
-      summary: p.summary,
-      complexity: p.complexity,
-      problemsCount: p.problems.length,
-      status: p.status,
-    }))
-  );
+  const [topics, setTopics] = useState<UnifiedTopic[]>([]);
+  const [patterns, setPatterns] = useState<UnifiedPattern[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -102,8 +87,8 @@ function PatternsContent() {
           apiClient<{ items: any[]; pagination: any }>("/patterns?limit=100"),
         ]);
 
-        let loadedTopics: UnifiedTopic[] = MOCK_TOPICS;
-        if (topicsRes.success && Array.isArray(topicsRes.data) && topicsRes.data.length > 0) {
+        let loadedTopics: UnifiedTopic[] = [];
+        if (topicsRes.success && Array.isArray(topicsRes.data)) {
           loadedTopics = topicsRes.data.map((t, idx) => ({
             id: t.id,
             name: t.name,
@@ -117,7 +102,7 @@ function PatternsContent() {
           setTopics(loadedTopics);
         }
 
-        if (patternsRes.success && patternsRes.data?.items && patternsRes.data.items.length > 0) {
+        if (patternsRes.success && patternsRes.data?.items) {
           const mappedPatterns: UnifiedPattern[] = patternsRes.data.items.map((p) => ({
             id: p.id,
             number: p.number,
@@ -131,7 +116,7 @@ function PatternsContent() {
               time: p.timeComplexity || "O(N)",
               space: p.spaceComplexity || "O(1)",
             },
-            problemsCount: p.problems?.length || 2,
+            problemsCount: p._count?.problems ?? p.problems?.length ?? 0,
             status: p.status,
           }));
           setPatterns(mappedPatterns);
@@ -143,7 +128,7 @@ function PatternsContent() {
           setExpandedTopics({ [activeSlug]: true });
         }
       } catch (err) {
-        console.error("Failed to fetch live API data, using fallback", err);
+        console.error("Failed to fetch live API data", err);
       } finally {
         setIsLoading(false);
       }
@@ -202,7 +187,6 @@ function PatternsContent() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="border-b border-border/60 pb-6">
-        
         <h1 className="text-3xl font-bold tracking-tight">DSA Topics & Patterns</h1>
         <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
           Browse all algorithmic topics below. Click any topic to open its dropdown and reveal all underlying patterns.
@@ -248,179 +232,179 @@ function PatternsContent() {
         </div>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center p-8 gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <span>Connecting to API and loading curriculum...</span>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading curriculum patterns...</p>
         </div>
-      )}
+      ) : (
+        /* TOPICS ACCORDION / DROPDOWN LIST */
+        <div className="space-y-4">
+          {topicSections.length > 0 ? (
+            topicSections.map((topic) => {
+              const isExpanded = !!expandedTopics[topic.slug];
+              const Icon = TOPIC_ICONS[topic.slug] || Layers;
+              const completed = topic.completedCount || 0;
+              const count = topic.totalCount || topic.patternCount;
+              const percentage = count > 0 ? Math.round((completed / count) * 100) : 0;
 
-      {/* TOPICS ACCORDION / DROPDOWN LIST */}
-      <div className="space-y-4">
-        {topicSections.length > 0 ? (
-          topicSections.map((topic) => {
-            const isExpanded = !!expandedTopics[topic.slug];
-            const Icon = TOPIC_ICONS[topic.slug] || Layers;
-            const completed = topic.completedCount || 0;
-            const count = topic.totalCount || topic.patternCount;
-            const percentage = count > 0 ? Math.round((completed / count) * 100) : 0;
-
-            return (
-              <div
-                key={topic.id}
-                className={cn(
-                  "rounded-2xl border transition-all duration-200 overflow-hidden bg-card",
-                  isExpanded
-                    ? "border-primary/50 shadow-md ring-1 ring-primary/20"
-                    : "border-border/80 hover:border-primary/40 hover:shadow-sm"
-                )}
-              >
-                {/* Clickable Topic Header */}
-                <button
-                  type="button"
-                  onClick={() => toggleTopic(topic.slug)}
-                  className="w-full text-left p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none cursor-pointer hover:bg-muted/20 transition-colors"
+              return (
+                <div
+                  key={topic.id}
+                  className={cn(
+                    "rounded-2xl border transition-all duration-200 overflow-hidden bg-card",
+                    isExpanded
+                      ? "border-primary/50 shadow-md ring-1 ring-primary/20"
+                      : "border-border/80 hover:border-primary/40 hover:shadow-sm"
+                  )}
                 >
-                  <div className="flex items-start sm:items-center gap-4 min-w-0">
-                    <div
-                      className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold transition-colors",
-                        isExpanded
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                          {topic.name}
-                        </h2>
-                        <Badge variant={isExpanded ? "default" : "secondary"} className="text-xs">
-                          {count} Patterns
-                        </Badge>
-                        {percentage > 0 && (
-                          <Badge variant="outline" className="text-[11px] font-mono">
-                            {percentage}% Completed
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 leading-relaxed">
-                        {topic.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right Progress & Chevron */}
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-border/50 pt-3 sm:pt-0">
-                    <div className="w-28 hidden md:block">
-                      <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-                        <span>Progress</span>
-                        <span className="font-mono font-semibold">{percentage}%</span>
-                      </div>
-                      <Progress value={percentage} className="h-1.5" />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
-                        {isExpanded ? "Hide Patterns" : "View Patterns"}
-                      </span>
+                  {/* Clickable Topic Header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleTopic(topic.slug)}
+                    className="w-full text-left p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none cursor-pointer hover:bg-muted/20 transition-colors"
+                  >
+                    <div className="flex items-start sm:items-center gap-4 min-w-0">
                       <div
                         className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-transform duration-200",
-                          isExpanded ? "bg-primary/10 text-primary rotate-180 border-primary/30" : "hover:bg-muted"
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold transition-colors",
+                          isExpanded
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-muted text-muted-foreground"
                         )}
                       >
-                        <ChevronDown className="h-4 w-4" />
+                        <Icon className="h-5 w-5" />
+                      </div>
+
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                            {topic.name}
+                          </h2>
+                          <Badge variant={isExpanded ? "default" : "secondary"} className="text-xs">
+                            {count} Patterns
+                          </Badge>
+                          {percentage > 0 && (
+                            <Badge variant="outline" className="text-[11px] font-mono">
+                              {percentage}% Completed
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 leading-relaxed">
+                          {topic.description}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </button>
 
-                {/* EXPANDED DROPDOWN: FULL-WIDTH PATTERNS UNDER THIS TOPIC */}
-                {isExpanded && (
-                  <div className="border-t border-border bg-muted/10 p-4 sm:p-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    <div className="flex items-center justify-between pb-1 px-1">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <span>Patterns under {topic.name}:</span>
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {topic.patterns.length} displayed
-                      </span>
-                    </div>
+                    {/* Right Progress & Chevron */}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-border/50 pt-3 sm:pt-0">
+                      <div className="w-28 hidden md:block">
+                        <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+                          <span>Progress</span>
+                          <span className="font-mono font-semibold">{percentage}%</span>
+                        </div>
+                        <Progress value={percentage} className="h-1.5" />
+                      </div>
 
-                    {topic.patterns.length > 0 ? (
-                      topic.patterns.map((pat) => (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
+                          {isExpanded ? "Hide Patterns" : "View Patterns"}
+                        </span>
                         <div
-                          key={pat.id}
-                          className="w-full rounded-xl border border-border/80 bg-card p-4 sm:p-5 hover:border-primary/50 transition-all hover:shadow-sm"
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-transform duration-200",
+                            isExpanded ? "bg-primary/10 text-primary rotate-180 border-primary/30" : "hover:bg-muted"
+                          )}
                         >
-                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                            <div className="flex items-start gap-3.5 min-w-0">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-sm">
-                                #{pat.number}
-                              </span>
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
 
-                              <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-base sm:text-lg font-bold text-foreground">
-                                    {pat.name}
-                                  </h3>
-                                  <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
-                                    {pat.difficulty}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-[11px] font-mono">
-                                    Time: {pat.complexity.time}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-[11px] font-mono">
-                                    Space: {pat.complexity.space}
-                                  </Badge>
-                                  {pat.status === "MASTERED" && (
-                                    <Badge variant="solved" className="text-[11px] gap-1">
-                                      <CheckCircle2 className="h-3 w-3" /> Mastered
+                  {/* EXPANDED DROPDOWN: FULL-WIDTH PATTERNS UNDER THIS TOPIC */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-muted/10 p-4 sm:p-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center justify-between pb-1 px-1">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          <span>Patterns under {topic.name}:</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {topic.patterns.length} displayed
+                        </span>
+                      </div>
+
+                      {topic.patterns.length > 0 ? (
+                        topic.patterns.map((pat) => (
+                          <div
+                            key={pat.id}
+                            className="w-full rounded-xl border border-border/80 bg-card p-4 sm:p-5 hover:border-primary/50 transition-all hover:shadow-sm"
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                              <div className="flex items-start gap-3.5 min-w-0">
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-sm">
+                                  #{pat.number}
+                                </span>
+
+                                <div className="space-y-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-base sm:text-lg font-bold text-foreground">
+                                      {pat.name}
+                                    </h3>
+                                    <Badge variant={pat.difficulty === "EASY" ? "easy" : "medium"}>
+                                      {pat.difficulty}
                                     </Badge>
-                                  )}
-                                </div>
+                                    <Badge variant="outline" className="text-[11px] font-mono">
+                                      Time: {pat.complexity.time}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-[11px] font-mono">
+                                      Space: {pat.complexity.space}
+                                    </Badge>
+                                    {pat.status === "MASTERED" && (
+                                      <Badge variant="solved" className="text-[11px] gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> Mastered
+                                      </Badge>
+                                    )}
+                                  </div>
 
-                                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 max-w-3xl leading-relaxed">
-                                  {pat.summary}
-                                </p>
+                                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 max-w-3xl leading-relaxed">
+                                    {pat.summary}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 border-t lg:border-t-0 border-border/50 pt-2 lg:pt-0">
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  {pat.problemsCount} Practice Problems
+                                </span>
+                                <Link href={`/patterns/${pat.slug}`}>
+                                  <Button size="sm" className="gap-1.5 text-xs h-8">
+                                    <span>Study Pattern</span>
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
-
-                            <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 border-t lg:border-t-0 border-border/50 pt-2 lg:pt-0">
-                              <span className="text-xs text-muted-foreground font-medium">
-                                {pat.problemsCount} Practice Problems
-                              </span>
-                              <Link href={`/patterns/${pat.slug}`}>
-                                <Button size="sm" className="gap-1.5 text-xs h-8">
-                                  <span>Study Pattern</span>
-                                  <ArrowRight className="h-3.5 w-3.5" />
-                                </Button>
-                              </Link>
-                            </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                          No patterns found matching your filter under {topic.name}.
                         </div>
-                      ))
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                        No patterns found matching your filter under {topic.name}.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <Card className="p-12 text-center text-muted-foreground text-sm border-dashed">
-            No topics or patterns match your search criteria.
-          </Card>
-        )}
-      </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <Card className="p-12 text-center text-muted-foreground text-sm border-dashed">
+              No topics or patterns match your search criteria.
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
