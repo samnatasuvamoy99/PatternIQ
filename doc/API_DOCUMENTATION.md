@@ -63,10 +63,7 @@ The collection uses Postman variables for seamless testing:
 ### 🔑 Default Pre-seeded Test Accounts
 The database seed script (`npx prisma db seed`) creates the following default credentials:
 
-| Account Type | Email | Password | Role |
-| :--- | :--- | :--- | :--- |
-| **Platform Admin** | `admin@dsaplatform.com` | `Admin@12345` | `ADMIN` |
-| **Test Student** | `student@dsaplatform.com` | `Student@12345` | `STUDENT` |
+
 
 ---
 
