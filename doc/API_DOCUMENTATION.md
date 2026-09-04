@@ -60,10 +60,13 @@ The collection uses Postman variables for seamless testing:
   - `STUDENT`: Access to learning topics, patterns, problem solving, personal notes, revisions, community articles, comments, and bookmarks.
   - `ADMIN`: Access to student features **plus** all `/api/v1/admin/*` management routes (topic/pattern/problem creation, article moderation, user management, and role promotion).
 
-### 🔑 Default Pre-seeded Test Accounts
-The database seed script (`npx prisma db seed`) creates the following default credentials:
+### 🔑 Initial Administrator Setup (Production vs Development)
 
-
+- **Development**: The database seed script (`npx prisma db seed`) creates a local admin and student account when run in development mode.
+- **Production**: Default plaintext credentials are not seeded. To initialize an administrator in production:
+  1. Register an account normally via the `/register` endpoint or registration page.
+  2. Promote the user to `ADMIN` either via Prisma Studio (`npx prisma studio`), direct SQL update on the database, or using the role update endpoint (see Section 4).
+  3. Alternatively, supply `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in your production environment variables before running the seed script.
 
 ---
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2, Lock } from "lucide-react";
 
@@ -13,15 +13,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      const queryString = searchParams?.toString();
-      const destination = queryString ? `${pathname}?${queryString}` : pathname;
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      const destination = search ? `${pathname}${search}` : pathname;
       router.replace(`/login?redirect=${encodeURIComponent(destination)}`);
     }
-  }, [user, isLoading, router, pathname, searchParams]);
+  }, [user, isLoading, router, pathname]);
 
   if (isLoading || !user) {
     return (
