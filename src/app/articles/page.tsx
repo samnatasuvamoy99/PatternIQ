@@ -20,7 +20,17 @@ import {
   Loader2,
 } from "lucide-react";
 
-const CATEGORIES = ["ALL", "DSA", "SYSTEM_DESIGN", "DEVELOPMENT", "CORE_CS"];
+const CATEGORIES = [
+  "ALL",
+  "DSA",
+  "SYSTEM_DESIGN",
+  "DEVELOPMENT",
+  "CORE_CS",
+  "DATABASE",
+  "DEVOPS",
+  "GENAI",
+  "PROGRAMMING",
+];
 
 interface ArticleItem {
   id: string;

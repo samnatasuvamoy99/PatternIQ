@@ -64,6 +64,9 @@ export async function apiClient<T = any>(
             localStorage.removeItem("patterniq_access_token");
             localStorage.removeItem("patterniq_refresh_token");
             localStorage.removeItem("patterniq_user");
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("patterniq:auth_expired"));
+            }
           }
         } catch {
           // Ignore refresh error

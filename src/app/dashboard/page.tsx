@@ -20,6 +20,7 @@ import {
   BookOpen,
   Loader2,
   Check,
+  AlertCircle,
 } from "lucide-react";
 
 interface DashboardData {
@@ -106,8 +107,8 @@ export default function DashboardPage() {
               Welcome back, <span className="text-primary">{user?.name || "Student"}</span> 👋
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {data && data.problems.solved > 0
-                ? `You've solved ${data.problems.solved} problems across ${data.patterns.completed} patterns. Keep the momentum going!`
+              {data && data.problems && data.problems.solved > 0
+                ? `You've solved ${data.problems.solved} problems across ${data.patterns?.completed ?? 0} patterns. Keep the momentum going!`
                 : "Begin your DSA journey by exploring foundational patterns and tracking your progress."}
             </p>
           </div>
@@ -134,6 +135,21 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">Loading your personalized dashboard...</p>
             </div>
           </div>
+        ) : !data ? (
+          <Card className="p-12 text-center space-y-4 border-dashed">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-bold">Unable to Load Dashboard Data</h2>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              We encountered an issue fetching your real-time analytics. Please refresh the page or try again in a few moments.
+            </p>
+            <div className="pt-2">
+              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+                Refresh Page
+              </Button>
+            </div>
+          </Card>
         ) : (
           <>
             {/* METRIC CARDS ROW */}
@@ -149,10 +165,10 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-2 text-3xl font-extrabold text-foreground">
-                  {data?.streak.current ?? 0} {data?.streak.current === 1 ? "Day" : "Days"}
+                  {data?.streak?.current ?? 0} {data?.streak?.current === 1 ? "Day" : "Days"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Personal best: {data?.streak.best ?? 0} {data?.streak.best === 1 ? "day" : "days"}
+                  Personal best: {data?.streak?.best ?? 0} {data?.streak?.best === 1 ? "day" : "days"}
                 </p>
               </Card>
 
@@ -167,13 +183,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-2 text-3xl font-extrabold text-foreground">
-                  {data?.problems.solved ?? 0}{" "}
+                  {data?.problems?.solved ?? 0}{" "}
                   <span className="text-sm font-normal text-muted-foreground">
-                    / {data?.problems.total ?? 0}
+                    / {data?.problems?.total ?? 0}
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {data?.problems.percentage ?? 0}% syllabus coverage
+                  {data?.problems?.percentage ?? 0}% syllabus coverage
                 </p>
               </Card>
 
@@ -188,13 +204,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="mt-2 text-3xl font-extrabold text-foreground">
-                  {data?.patterns.mastered ?? 0}{" "}
+                  {data?.patterns?.mastered ?? 0}{" "}
                   <span className="text-sm font-normal text-muted-foreground">
-                    / {data?.patterns.total ?? 0}
+                    / {data?.patterns?.total ?? 0}
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {data?.patterns.percentage ?? 0}% mastery rate
+                  {data?.patterns?.percentage ?? 0}% mastery rate
                 </p>
               </Card>
 
@@ -230,16 +246,16 @@ export default function DashboardPage() {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-emerald-500 font-semibold">
-                          Easy ({data?.difficulty.easy.solved ?? 0} / {data?.difficulty.easy.total ?? 0})
+                          Easy ({data?.difficulty?.easy?.solved ?? 0} / {data?.difficulty?.easy?.total ?? 0})
                         </span>
                         <span className="text-muted-foreground">
-                          {data?.difficulty.easy.percentage ?? 0}%
+                          {data?.difficulty?.easy?.percentage ?? 0}%
                         </span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                          style={{ width: `${data?.difficulty.easy.percentage ?? 0}%` }}
+                          style={{ width: `${data?.difficulty?.easy?.percentage ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -248,16 +264,16 @@ export default function DashboardPage() {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-amber-500 font-semibold">
-                          Medium ({data?.difficulty.medium.solved ?? 0} / {data?.difficulty.medium.total ?? 0})
+                          Medium ({data?.difficulty?.medium?.solved ?? 0} / {data?.difficulty?.medium?.total ?? 0})
                         </span>
                         <span className="text-muted-foreground">
-                          {data?.difficulty.medium.percentage ?? 0}%
+                          {data?.difficulty?.medium?.percentage ?? 0}%
                         </span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
                         <div
                           className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                          style={{ width: `${data?.difficulty.medium.percentage ?? 0}%` }}
+                          style={{ width: `${data?.difficulty?.medium?.percentage ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -266,16 +282,16 @@ export default function DashboardPage() {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-rose-500 font-semibold">
-                          Hard ({data?.difficulty.hard.solved ?? 0} / {data?.difficulty.hard.total ?? 0})
+                          Hard ({data?.difficulty?.hard?.solved ?? 0} / {data?.difficulty?.hard?.total ?? 0})
                         </span>
                         <span className="text-muted-foreground">
-                          {data?.difficulty.hard.percentage ?? 0}%
+                          {data?.difficulty?.hard?.percentage ?? 0}%
                         </span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
                         <div
                           className="h-full bg-rose-500 rounded-full transition-all duration-500"
-                          style={{ width: `${data?.difficulty.hard.percentage ?? 0}%` }}
+                          style={{ width: `${data?.difficulty?.hard?.percentage ?? 0}%` }}
                         />
                       </div>
                     </div>

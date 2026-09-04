@@ -11,14 +11,14 @@ const adminRegisterSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters").max(100),
-  adminKey: z.string().optional(),
+  adminKey: z.string().min(1, "Administrator security key is required"),
 });
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const body = adminRegisterSchema.parse(await parseJson(req));
 
   const validKey = process.env.ADMIN_INVITE_KEY || "PatternIQAdmin2026";
-  if (body.adminKey && body.adminKey !== validKey && body.adminKey !== "admin123") {
+  if (!body.adminKey || (body.adminKey !== validKey && body.adminKey !== "admin123")) {
     throw ApiError.forbidden("Invalid administrator security key", "INVALID_ADMIN_KEY");
   }
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
-import { Shield, Lock, Mail, ArrowRight, Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
+import { Shield, Lock, Mail, ArrowRight, AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AdminSignInPage() {
   const router = useRouter();
@@ -52,29 +52,10 @@ export default function AdminSignInPage() {
         setError(res.error?.message || "Invalid administrator credentials");
       }
     } catch (err: any) {
-      // Fallback for offline demo mode
-      if (email === "admin@dsaplatform.com" && password === "Admin@12345") {
-        const adminUser = {
-          id: "admin-demo-1",
-          name: "Platform Admin",
-          email: "admin@dsaplatform.com",
-          role: "ADMIN" as const,
-        };
-        localStorage.setItem("patterniq_user", JSON.stringify(adminUser));
-        localStorage.setItem("patterniq_access_token", "demo-admin-token");
-        window.location.href = "/admin";
-        return;
-      }
       setError(err?.message || "Network error. Failed to reach auth server.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillDemoAdmin = () => {
-    setEmail("admin@dsaplatform.com");
-    setPassword("Admin@12345");
-    setError(null);
   };
 
   return (
@@ -153,25 +134,6 @@ export default function AdminSignInPage() {
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </form>
-
-            {/* Demo Helper Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={fillDemoAdmin}
-                className="w-full rounded-lg border border-dashed border-amber-500/30 bg-amber-500/5 p-2.5 text-left text-xs text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer flex items-center justify-between"
-              >
-                <div className="space-y-0.5">
-                  <p className="font-semibold flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5" /> Quick Fill Demo Admin
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    admin@dsaplatform.com • Admin@12345
-                  </p>
-                </div>
-                <span className="text-[11px] underline">Fill Form</span>
-              </button>
-            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-2 border-t border-border/60 bg-muted/20 py-4 text-center text-xs text-muted-foreground">

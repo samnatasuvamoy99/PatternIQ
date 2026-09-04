@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/patterns", name: "Patterns", label: "Patterns", icon: Layers },
   { href: "/problems", name: "Problems", label: "Problems", icon: FileText },
+  { href: "/revision", name: "Revision", label: "Revision", icon: Repeat },
   { href: "/articles", name: "Articles", label: "Articles", icon: BookOpen },
 ];
 
@@ -37,7 +38,6 @@ const AUTH_ROUTES = [
   "/register",
   "/admin/signin",
   "/admin/signup",
-  "/admin/sinin",
 ];
 
 export function Navbar() {

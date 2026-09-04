@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,17 @@ interface ArticleItem {
   publishedAt?: string | null;
   author?: { id: string; name: string };
   createdAt: string;
+}
+
+function AdminTabSync({ onTabChange }: { onTabChange: (tab: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const tabParam = searchParams?.get("tab");
+    if (tabParam && ["users", "topics", "patterns", "problems", "moderation"].includes(tabParam)) {
+      onTabChange(tabParam);
+    }
+  }, [searchParams, onTabChange]);
+  return null;
 }
 
 export default function AdminPage() {
@@ -794,6 +805,9 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+      <Suspense fallback={null}>
+        <AdminTabSync onTabChange={setActiveTab} />
+      </Suspense>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1">

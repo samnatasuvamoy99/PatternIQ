@@ -62,12 +62,19 @@ interface PatternData {
   status?: string;
 }
 
+interface PatternNote {
+  id: string;
+  content: string;
+  createdAt?: string;
+}
+
 export default function PatternDetailPage({ params }: { params: { slug: string } }) {
   const [pattern, setPattern] = useState<PatternData | null>(null);
   const [problems, setProblems] = useState<ProblemData[]>([]);
-  const [notes, setNotes] = useState<string[]>([]);
+  const [notes, setNotes] = useState<PatternNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   // Fetch live pattern from API
   useEffect(() => {
@@ -144,6 +151,13 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
 
           setPattern(mapped);
           setProblems(mappedProblems);
+
+          // Fetch persisted personal notes for this pattern
+          apiClient<PatternNote[]>(`/notes?patternId=${apiData.id}`).then((notesRes) => {
+            if (notesRes.success && Array.isArray(notesRes.data)) {
+              setNotes(notesRes.data);
+            }
+          }).catch(() => {});
         } else {
           setPattern(null);
         }
@@ -180,14 +194,36 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
     }).catch(() => {});
   };
 
-  const handleAddNote = () => {
-    if (!newNote.trim()) return;
-    setNotes((prev) => [...prev, newNote.trim()]);
-    setNewNote("");
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !pattern) return;
+    const content = newNote.trim();
+    setIsSavingNote(true);
+    try {
+      const res = await apiClient<PatternNote>("/notes", {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          patternId: pattern.id,
+        }),
+      });
+      if (res.success && res.data) {
+        setNotes((prev) => [res.data!, ...prev]);
+        setNewNote("");
+      }
+    } catch (err) {
+      console.error("Failed to save note", err);
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
-  const handleDeleteNote = (index: number) => {
-    setNotes((prev) => prev.filter((_, i) => i !== index));
+  const handleDeleteNote = async (noteId: string) => {
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    try {
+      await apiClient(`/notes/${noteId}`, { method: "DELETE" });
+    } catch (err) {
+      console.error("Failed to delete note", err);
+    }
   };
 
   return (
@@ -429,21 +465,27 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="space-y-2">
-                      {notes.map((note, i) => (
-                        <div
-                          key={i}
-                          className="group relative rounded-lg border border-border/80 bg-muted/30 p-3 text-xs text-foreground/90 leading-relaxed"
-                        >
-                          <span>{note}</span>
-                          <button
-                            onClick={() => handleDeleteNote(i)}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            aria-label="Delete note"
+                      {notes.length > 0 ? (
+                        notes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="group relative rounded-lg border border-border/80 bg-muted/30 p-3 text-xs text-foreground/90 leading-relaxed pr-7"
                           >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
+                            <span>{note.content}</span>
+                            <button
+                              onClick={() => handleDeleteNote(note.id)}
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive cursor-pointer"
+                              aria-label="Delete note"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic py-1">
+                          No notes saved yet for this pattern.
+                        </p>
+                      )}
                     </div>
 
                     <div className="pt-2 space-y-2 border-t border-border">
@@ -454,9 +496,18 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                         className="text-xs"
                         rows={3}
                       />
-                      <Button size="sm" onClick={handleAddNote} className="w-full text-xs gap-1">
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        <span>Save Note</span>
+                      <Button
+                        size="sm"
+                        onClick={handleAddNote}
+                        disabled={isSavingNote || !newNote.trim()}
+                        className="w-full text-xs gap-1 cursor-pointer"
+                      >
+                        {isSavingNote ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <PlusCircle className="h-3.5 w-3.5" />
+                        )}
+                        <span>{isSavingNote ? "Saving..." : "Save Note"}</span>
                       </Button>
                     </div>
                   </CardContent>

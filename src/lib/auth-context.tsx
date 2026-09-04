@@ -41,6 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+
+    const handleExpired = () => {
+      setUser(null);
+      setToken(null);
+    };
+
+    window.addEventListener("patterniq:auth_expired", handleExpired);
+    return () => window.removeEventListener("patterniq:auth_expired", handleExpired);
   }, []);
 
   const login = async (email: string, password: string) => {

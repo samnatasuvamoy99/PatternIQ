@@ -46,16 +46,7 @@ export default function AdminSignUpPage() {
         setError(res.error?.message || "Failed to create administrator account.");
       }
     } catch (err: any) {
-      // Fallback for offline demo mode
-      const newAdminUser = {
-        id: `admin-${Date.now()}`,
-        name,
-        email,
-        role: "ADMIN" as const,
-      };
-      localStorage.setItem("patterniq_user", JSON.stringify(newAdminUser));
-      localStorage.setItem("patterniq_access_token", "demo-admin-token");
-      window.location.href = "/admin";
+      setError(err?.message || "Network error. Failed to reach auth server.");
     } finally {
       setIsLoading(false);
     }
