@@ -260,10 +260,11 @@ All user registration and login operations use standard auth routes.
 | `PATCH` | `http://localhost:3000/api/v1/admin/problems/:id` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Body**: `{"title":"Two Sum (Updated)"}` |
 | `DELETE` | `http://localhost:3000/api/v1/admin/problems/:id` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Delete problem)* |
 
-#### 📰 Article Moderation
+#### 📰 Article Moderation & Management
 | Method | Full Endpoint Link | Access | Description / Request Body & Headers |
 | :--- | :--- | :--- | :--- |
 | `GET` | `http://localhost:3000/api/v1/admin/articles` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(List all community articles)* |
+| `POST` | `http://localhost:3000/api/v1/admin/articles` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Body**: `{"title":"...","category":"DSA","content":"...","status":"PUBLISHED"}` *(Directly create & publish article as admin)* |
 | `GET` | `http://localhost:3000/api/v1/admin/articles/submissions` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Pending student submitted articles)* |
 | `GET` | `http://localhost:3000/api/v1/admin/articles/:id` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Get article details)* |
 | `PATCH` | `http://localhost:3000/api/v1/admin/articles/:id` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Body**: `{"title":"Admin Updated Title"}` |
@@ -281,6 +282,15 @@ All user registration and login operations use standard auth routes.
 | `POST` | `http://localhost:3000/api/v1/admin/comments/:id/reply` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Body**: `{"content":"Official admin response"}` |
 | `PATCH` | `http://localhost:3000/api/v1/admin/comments/:id/pin` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Pin comment to top)* |
 | `PATCH` | `http://localhost:3000/api/v1/admin/comments/:id/hide` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Hide comment)* |
+
+#### 👥 User Management
+| Method | Full Endpoint Link | Access | Description / Request Body & Headers |
+| :--- | :--- | :--- | :--- |
+| `GET` | `http://localhost:3000/api/v1/admin/users` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Query**: `?search=alice` *(List all registered users with activity counts)* |
+| `GET` | `http://localhost:3000/api/v1/admin/users/:id` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Get individual user details & bio)* |
+| `PATCH` | `http://localhost:3000/api/v1/admin/users/:id/activate` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Activate user account)* |
+| `PATCH` | `http://localhost:3000/api/v1/admin/users/:id/deactivate` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>` *(Suspend user account)* |
+| `PATCH` | `http://localhost:3000/api/v1/admin/users/:id/role` | Admin Auth | **Header**: `Authorization: Bearer <accessToken>`<br>**Body**: `{"role": "ADMIN"}` or `{"role": "STUDENT"}` *(Update role)* |
 
 ---
 

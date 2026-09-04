@@ -15,8 +15,8 @@ export async function adminListUsers(search?: string) {
     where,
     select: {
       id: true, name: true, email: true, role: true, isActive: true,
-      avatar: true, createdAt: true,
-      _count: { select: { articles: true, comments: true } },
+      avatar: true, bio: true, createdAt: true,
+      _count: { select: { articles: true, comments: true, problemProgress: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -28,7 +28,7 @@ export async function adminGetUser(id: string) {
     select: {
       id: true, name: true, email: true, role: true, isActive: true,
       avatar: true, bio: true, createdAt: true,
-      _count: { select: { articles: true, comments: true } },
+      _count: { select: { articles: true, comments: true, problemProgress: true } },
     },
   });
   if (!user) throw ApiError.notFound("User not found");

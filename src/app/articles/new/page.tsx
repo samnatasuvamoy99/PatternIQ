@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { ArrowLeft, Send, Eye, PenSquare } from "lucide-react";
+import { ArrowLeft, Send, Eye, PenSquare, Loader2 } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 
 const CATEGORIES = ["DSA", "SYSTEM_DESIGN", "DEVELOPMENT", "CORE_CS", "DATABASE", "GENAI"];
 
@@ -22,17 +23,45 @@ export default function NewArticlePage() {
   const [isPreview, setIsPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim() || !content.trim()) return;
+    if (content.trim().length < 50) {
+      setErrorMsg("Content must be at least 50 characters.");
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
+    setErrorMsg(null);
+
+    try {
+      const res = await apiClient<{ id: string }>("/articles", {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.trim(),
+          category,
+          excerpt: excerpt.trim() || undefined,
+          content: content.trim(),
+        }),
+      });
+
+      if (res.success && res.data) {
+        // Automatically submit draft for community review
+        await apiClient(`/articles/${res.data.id}/submit`, { method: "POST" }).catch(() => {});
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/articles");
+        }, 1500);
+      } else {
+        setErrorMsg(res.error?.message || "Failed to create article");
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Network error submitting article");
+    } finally {
       setIsSubmitting(false);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/articles");
-      }, 1500);
-    }, 800);
+    }
   };
 
   return (
@@ -69,6 +98,12 @@ export default function NewArticlePage() {
       {success && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600 dark:text-emerald-400">
           Article submitted successfully! Redirecting to feed...
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {errorMsg}
         </div>
       )}
 
@@ -146,7 +181,11 @@ export default function NewArticlePage() {
                 Submitted articles are reviewed before appearing publicly.
               </span>
               <Button type="submit" disabled={isSubmitting} className="gap-2 text-xs">
-                <Send className="h-3.5 w-3.5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
                 <span>{isSubmitting ? "Submitting..." : "Submit for Review"}</span>
               </Button>
             </div>

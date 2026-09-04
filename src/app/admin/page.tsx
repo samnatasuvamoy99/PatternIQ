@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { AdminUsersTab } from "@/components/admin/admin-users-tab";
 import {
   Shield,
   Layers,
@@ -38,6 +39,8 @@ import {
   Trash2,
   MessageSquare,
   RefreshCw,
+  PenSquare,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -127,10 +130,16 @@ export default function AdminPage() {
     comments: 0,
   });
 
+  const [activeTab, setActiveTab] = useState<string>("patterns");
+  const [registeredUsersCount, setRegisteredUsersCount] = useState<number>(0);
+
   const [topics, setTopics] = useState<TopicItem[]>([]);
   const [patterns, setPatterns] = useState<PatternItem[]>([]);
   const [problems, setProblems] = useState<ProblemItem[]>([]);
   const [pendingArticles, setPendingArticles] = useState<ArticleItem[]>([]);
+  const [allArticles, setAllArticles] = useState<ArticleItem[]>([]);
+  const [articleFilterStatus, setArticleFilterStatus] = useState<string>("ALL");
+  const [articleSearchQuery, setArticleSearchQuery] = useState<string>("");
   const [isLoadingData, setIsLoadingData] = useState(false);
 
   // Success / Error Banner
@@ -141,6 +150,7 @@ export default function AdminPage() {
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [showPatternModal, setShowPatternModal] = useState(false);
   const [showProblemModal, setShowProblemModal] = useState(false);
+  const [showArticleModal, setShowArticleModal] = useState(false);
 
   // Modals Open States (Edit)
   const [editingTopic, setEditingTopic] = useState<TopicItem | null>(null);
@@ -150,6 +160,19 @@ export default function AdminPage() {
   // Active Tab inside Pattern Modals: "meta" | "intuition" | "code"
   const [patternModalTab, setPatternModalTab] = useState<"meta" | "intuition" | "code">("meta");
   const [templateLangTab, setTemplateLangTab] = useState<"python" | "cpp" | "java" | "javascript">("python");
+
+  // -------------------------------------------------------------
+  // FORM STATES: 4. NEW ARTICLE (ADMIN AUTHORING)
+  // -------------------------------------------------------------
+  const [newArticleTitle, setNewArticleTitle] = useState("");
+  const [newArticleCategory, setNewArticleCategory] = useState("DSA");
+  const [newArticleSubtopic, setNewArticleSubtopic] = useState("");
+  const [newArticleExcerpt, setNewArticleExcerpt] = useState("");
+  const [newArticleContent, setNewArticleContent] = useState("");
+  const [newArticleCoverImage, setNewArticleCoverImage] = useState("");
+  const [newArticleStatus, setNewArticleStatus] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
+  const [isArticlePreview, setIsArticlePreview] = useState(false);
+  const [isSubmittingArticle, setIsSubmittingArticle] = useState(false);
 
   // Deletion Confirmation Modal State
   const [itemToDelete, setItemToDelete] = useState<{
@@ -255,6 +278,25 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && ["users", "topics", "patterns", "problems", "moderation"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", val);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  useEffect(() => {
     if (!isAuthContextLoading) {
       verifyAdminAccess();
     }
@@ -271,11 +313,14 @@ export default function AdminPage() {
         apiClient<TopicItem[]>("/admin/topics"),
         apiClient<PatternItem[]>("/admin/patterns"),
         apiClient<ProblemItem[]>("/admin/problems"),
-        apiClient<ArticleItem[]>("/admin/articles?status=SUBMITTED"),
+        apiClient<ArticleItem[]>("/admin/articles"),
       ]);
 
       if (dashRes.success && dashRes.data?.totals) {
         setDashboardTotals(dashRes.data.totals);
+        if (dashRes.data.totals.users) {
+          setRegisteredUsersCount(dashRes.data.totals.users);
+        }
       }
 
       if (topicsRes.success && Array.isArray(topicsRes.data)) {
@@ -297,7 +342,8 @@ export default function AdminPage() {
       }
 
       if (articlesRes.success && Array.isArray(articlesRes.data)) {
-        setPendingArticles(articlesRes.data);
+        setAllArticles(articlesRes.data);
+        setPendingArticles(articlesRes.data.filter((a) => a.status === "SUBMITTED"));
       }
     } catch (err) {
       console.error("Failed to load admin data", err);
@@ -597,6 +643,7 @@ export default function AdminPage() {
           setProblems((prev) => prev.filter((p) => p.id !== itemToDelete.id));
         } else if (itemToDelete.type === "article") {
           setPendingArticles((prev) => prev.filter((a) => a.id !== itemToDelete.id));
+          setAllArticles((prev) => prev.filter((a) => a.id !== itemToDelete.id));
         }
 
         showSuccess(`${itemToDelete.type.toUpperCase()} "${itemToDelete.name}" deleted.`);
@@ -609,6 +656,57 @@ export default function AdminPage() {
       showError(e?.message || `Failed to delete ${itemToDelete.type}`);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // HANDLERS: 8. CREATE ARTICLE (ADMIN)
+  // -------------------------------------------------------------
+  const handleCreateArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newArticleTitle.trim() || !newArticleContent.trim()) return;
+    if (newArticleContent.trim().length < 50) {
+      showError("Article content must be at least 50 characters.");
+      return;
+    }
+    setIsSubmittingArticle(true);
+
+    try {
+      const res = await apiClient<ArticleItem>("/admin/articles", {
+        method: "POST",
+        body: JSON.stringify({
+          title: newArticleTitle.trim(),
+          category: newArticleCategory,
+          subtopic: newArticleSubtopic.trim() || undefined,
+          excerpt: newArticleExcerpt.trim() || undefined,
+          content: newArticleContent.trim(),
+          coverImage: newArticleCoverImage.trim() || undefined,
+          status: newArticleStatus,
+        }),
+      });
+
+      if (res.success && res.data) {
+        setShowArticleModal(false);
+        showSuccess(
+          `Article "${newArticleTitle}" created and ${
+            newArticleStatus === "PUBLISHED" ? "published live" : "saved as draft"
+          }!`
+        );
+        setNewArticleTitle("");
+        setNewArticleExcerpt("");
+        setNewArticleContent("");
+        setNewArticleSubtopic("");
+        setNewArticleCoverImage("");
+        setNewArticleStatus("PUBLISHED");
+        setIsArticlePreview(false);
+        loadAllAdminData();
+      } else {
+        showError(res.error?.message || "Failed to create article");
+      }
+    } catch (e: any) {
+      showError(e?.message || "Failed to create article");
+    } finally {
+      setIsSubmittingArticle(false);
     }
   };
 
@@ -754,6 +852,16 @@ export default function AdminPage() {
           </Button>
 
           <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowArticleModal(true)}
+            className="gap-1.5 text-xs h-9 cursor-pointer border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+          >
+            <PenSquare className="h-3.5 w-3.5 text-amber-500" />
+            <span>+ New Article</span>
+          </Button>
+
+          <Button
             variant="ghost"
             size="sm"
             onClick={handleSwitchAccount}
@@ -792,10 +900,20 @@ export default function AdminPage() {
 
       {/* OVERVIEW STATS ROW (FROM LIVE DASHBOARD API) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 flex items-center justify-between">
+        <Card
+          onClick={() => handleTabChange("users")}
+          className={cn(
+            "p-5 flex items-center justify-between cursor-pointer transition-all hover:border-blue-500/50 hover:shadow-md",
+            activeTab === "users" && "border-blue-500 ring-1 ring-blue-500/30 bg-blue-500/5"
+          )}
+          title="Click to view and manage registered users"
+        >
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registered Users</p>
-            <p className="text-2xl font-bold font-mono text-foreground">{dashboardTotals.users}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registered Users</p>
+              <span className="text-[10px] text-blue-500 font-semibold hover:underline">View →</span>
+            </div>
+            <p className="text-2xl font-bold font-mono text-foreground">{registeredUsersCount || dashboardTotals.users}</p>
           </div>
           <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
             <Users className="h-5 w-5" />
@@ -833,14 +951,33 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* ADMIN TABS: Topics, Patterns, Problems, Moderation */}
-      <Tabs defaultValue="patterns" className="w-full">
-        <TabsList className="grid grid-cols-4 max-w-xl">
-          <TabsTrigger value="topics">Topics ({topics.length})</TabsTrigger>
-          <TabsTrigger value="patterns">Patterns ({patterns.length})</TabsTrigger>
-          <TabsTrigger value="problems">Problems ({problems.length})</TabsTrigger>
-          <TabsTrigger value="moderation">Articles ({pendingArticles.length})</TabsTrigger>
+      {/* ADMIN TABS: Users, Topics, Patterns, Problems, Moderation */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5 max-w-2xl h-auto p-1 gap-1">
+          <TabsTrigger value="users" className="gap-1.5 py-2 cursor-pointer">
+            <Users className="h-3.5 w-3.5 text-blue-400" />
+            <span>Users ({registeredUsersCount || dashboardTotals.users})</span>
+          </TabsTrigger>
+          <TabsTrigger value="patterns" className="py-2 cursor-pointer">Patterns ({patterns.length})</TabsTrigger>
+          <TabsTrigger value="topics" className="py-2 cursor-pointer">Topics ({topics.length})</TabsTrigger>
+          <TabsTrigger value="problems" className="py-2 cursor-pointer">Problems ({problems.length})</TabsTrigger>
+          <TabsTrigger value="moderation" className="py-2 cursor-pointer">Articles ({allArticles.length || pendingArticles.length})</TabsTrigger>
         </TabsList>
+
+        {/* ============================================================== */}
+        {/* TAB 0: REGISTERED USERS MANAGEMENT */}
+        {/* ============================================================== */}
+        <TabsContent value="users" className="pt-4 space-y-4">
+          <AdminUsersTab
+            currentAdminId={verifiedAdminUser?.id || user?.id}
+            onShowSuccess={showSuccess}
+            onShowError={showError}
+            onUserCountChange={(count) => {
+              setRegisteredUsersCount(count);
+              setDashboardTotals((prev) => ({ ...prev, users: count }));
+            }}
+          />
+        </TabsContent>
 
         {/* ============================================================== */}
         {/* TAB 1: TOPICS INVENTORY */}
@@ -1109,33 +1246,144 @@ export default function AdminPage() {
         </TabsContent>
 
         {/* ============================================================== */}
-        {/* TAB 4: ARTICLE MODERATION */}
+        {/* TAB 4: ARTICLES MANAGEMENT & MODERATION */}
         {/* ============================================================== */}
         <TabsContent value="moderation" className="pt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold">Community Submissions Queue</h2>
-              <p className="text-xs text-muted-foreground">
-                Review, approve, or reject technical guides submitted by students and community members.
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">Platform Articles & Guides</h2>
+                <Badge variant="secondary" className="text-xs">
+                  {allArticles.length} Total
+                </Badge>
+                {pendingArticles.length > 0 && (
+                  <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
+                    {pendingArticles.length} Pending Review
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Author and publish technical guides directly or review community member submissions.
               </p>
             </div>
-            <Badge variant="outline" className="text-xs">
-              {pendingArticles.length} Pending
-            </Badge>
+
+            <Button
+              size="sm"
+              onClick={() => setShowArticleModal(true)}
+              className="gap-1.5 text-xs h-9 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white self-start sm:self-auto"
+            >
+              <Plus className="h-4 w-4" />
+              <span>+ Create Article</span>
+            </Button>
           </div>
 
+          {/* Sub-Filters & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/20 p-3 rounded-xl border border-border">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setArticleFilterStatus("ALL")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                  articleFilterStatus === "ALL"
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All ({allArticles.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArticleFilterStatus("SUBMITTED")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                  articleFilterStatus === "SUBMITTED"
+                    ? "bg-amber-500 text-white font-semibold"
+                    : "text-amber-500 hover:bg-amber-500/10"
+                )}
+              >
+                Pending ({pendingArticles.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArticleFilterStatus("PUBLISHED")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                  articleFilterStatus === "PUBLISHED"
+                    ? "bg-emerald-600 text-white font-semibold"
+                    : "text-emerald-500 hover:bg-emerald-500/10"
+                )}
+              >
+                Published ({allArticles.filter((a) => a.status === "PUBLISHED").length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArticleFilterStatus("DRAFT")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                  articleFilterStatus === "DRAFT"
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Drafts ({allArticles.filter((a) => a.status === "DRAFT").length})
+              </button>
+            </div>
+
+            <div className="relative sm:w-64">
+              <Input
+                placeholder="Search articles by title or author..."
+                value={articleSearchQuery}
+                onChange={(e) => setArticleSearchQuery(e.target.value)}
+                className="text-xs h-8 bg-background/50"
+              />
+              {articleSearchQuery && (
+                <button
+                  onClick={() => setArticleSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Articles List */}
           <div className="space-y-3">
-            {pendingArticles.length > 0 ? (
-              pendingArticles.map((art) => (
+            {allArticles
+              .filter((art) => {
+                const matchesFilter =
+                  articleFilterStatus === "ALL" || art.status === articleFilterStatus;
+                const q = articleSearchQuery.toLowerCase().trim();
+                const matchesSearch =
+                  !q ||
+                  art.title.toLowerCase().includes(q) ||
+                  (art.author?.name && art.author.name.toLowerCase().includes(q)) ||
+                  art.category.toLowerCase().includes(q);
+                return matchesFilter && matchesSearch;
+              })
+              .map((art) => (
                 <Card key={art.id} className="p-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="text-xs font-mono">
                           {art.category}
                         </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-semibold",
+                            art.status === "PUBLISHED" && "text-emerald-500 border-emerald-500/30 bg-emerald-500/10",
+                            art.status === "SUBMITTED" && "text-amber-500 border-amber-500/30 bg-amber-500/10",
+                            art.status === "DRAFT" && "text-muted-foreground border-border bg-muted/40",
+                            art.status === "REJECTED" && "text-destructive border-destructive/30 bg-destructive/10"
+                          )}
+                        >
+                          {art.status}
+                        </Badge>
                         <span className="text-xs text-muted-foreground font-mono">
-                          Submitted by {art.author?.name || "Community Member"}
+                          By {art.author?.name || "Admin"} • {new Date(art.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-foreground">{art.title}</h3>
@@ -1147,42 +1395,75 @@ export default function AdminPage() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleApproveArticle(art.id)}
-                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Approve & Publish</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRejectArticle(art.id)}
-                        className="gap-1.5 text-xs text-amber-500 hover:bg-amber-500/10 cursor-pointer"
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span>Reject</span>
-                      </Button>
+                      <Link href={`/articles/${art.slug}`} target="_blank">
+                        <Button size="sm" variant="ghost" className="text-xs h-8 px-2.5 gap-1">
+                          <ExternalLink className="h-3 w-3" />
+                          <span>View</span>
+                        </Button>
+                      </Link>
+
+                      {art.status === "SUBMITTED" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleApproveArticle(art.id)}
+                            className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer h-8"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Approve</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRejectArticle(art.id)}
+                            className="gap-1 text-xs text-amber-500 hover:bg-amber-500/10 cursor-pointer h-8"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            <span>Reject</span>
+                          </Button>
+                        </>
+                      )}
+
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setItemToDelete({ type: "article", id: art.id, name: art.title })}
-                        className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                        className="gap-1 text-xs text-destructive hover:bg-destructive/10 cursor-pointer h-8 px-2"
+                        title="Delete article"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>Delete</span>
+                        <span className="hidden sm:inline">Delete</span>
                       </Button>
                     </div>
                   </div>
                 </Card>
-              ))
-            ) : (
-              <Card className="p-12 text-center text-sm text-muted-foreground border-dashed">
-                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                <p className="font-semibold text-foreground">Moderation queue is clean!</p>
-                <p className="text-xs mt-1">No community articles currently pending review.</p>
+              ))}
+
+            {allArticles.filter((art) => {
+              const matchesFilter =
+                articleFilterStatus === "ALL" || art.status === articleFilterStatus;
+              const q = articleSearchQuery.toLowerCase().trim();
+              return (
+                matchesFilter &&
+                (!q ||
+                  art.title.toLowerCase().includes(q) ||
+                  (art.author?.name && art.author.name.toLowerCase().includes(q)))
+              );
+            }).length === 0 && (
+              <Card className="p-12 text-center text-sm text-muted-foreground border-dashed space-y-3">
+                <BookOpen className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+                <p className="font-semibold text-foreground">No articles found in this view</p>
+                <p className="text-xs">Click &quot;+ Create Article&quot; to author a new platform guide.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowArticleModal(true)}
+                  className="text-xs gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Create Your First Article</span>
+                </Button>
               </Card>
             )}
           </div>
@@ -1988,6 +2269,232 @@ export default function AdminPage() {
                 <Button type="submit" size="sm" disabled={isSubmittingProblem} className="text-xs gap-1.5">
                   {isSubmittingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
                   <span>Update Problem</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6.5. MODAL: CREATE ARTICLE (ADMIN) */}
+      {/* ========================================================================= */}
+      {showArticleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 font-bold">
+                  <PenSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Author Platform Technical Article</h2>
+                  <p className="text-xs text-muted-foreground">Publish engineering guides and pattern breakdowns</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowArticleModal(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateArticle} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Article Title</label>
+                <Input
+                  placeholder="e.g. Mastering In-Place Array Reversals in Technical Interviews"
+                  required
+                  value={newArticleTitle}
+                  onChange={(e) => setNewArticleTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Category</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={newArticleCategory}
+                    onChange={(e) => setNewArticleCategory(e.target.value)}
+                  >
+                    <option value="DSA">DSA (Data Structures & Algorithms)</option>
+                    <option value="SYSTEM_DESIGN">System Design & Architecture</option>
+                    <option value="DEVELOPMENT">Full-Stack Development</option>
+                    <option value="CORE_CS">Core Computer Science (OS, CN)</option>
+                    <option value="DATABASE">Database & Storage Internals</option>
+                    <option value="DEVOPS">DevOps & Cloud Infrastructure</option>
+                    <option value="GENAI">Generative AI & LLMs</option>
+                    <option value="PROGRAMMING">Languages & Clean Code</option>
+                    <option value="OTHER">Other Engineering Guides</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Subtopic (Optional)</label>
+                  <Input
+                    placeholder="e.g. Sliding Window, B-Trees, Docker"
+                    value={newArticleSubtopic}
+                    onChange={(e) => setNewArticleSubtopic(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Cover Image URL (Optional)</label>
+                <Input
+                  placeholder="https://images.unsplash.com/..."
+                  value={newArticleCoverImage}
+                  onChange={(e) => setNewArticleCoverImage(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Excerpt / Summary</label>
+                <Textarea
+                  placeholder="A clear 1-2 sentence overview shown in article preview cards..."
+                  rows={2}
+                  value={newArticleExcerpt}
+                  onChange={(e) => setNewArticleExcerpt(e.target.value)}
+                />
+              </div>
+
+              {/* Content Header with Preview Toggle */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-foreground">
+                    Article Content (Markdown)
+                    <span className="text-muted-foreground font-normal ml-1.5">
+                      ({newArticleContent.length} chars, min 50)
+                    </span>
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsArticlePreview(!isArticlePreview)}
+                    className="h-7 text-xs gap-1 px-2.5 cursor-pointer"
+                  >
+                    {isArticlePreview ? (
+                      <>
+                        <PenSquare className="h-3 w-3" />
+                        <span>Edit Text</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3 w-3" />
+                        <span>Preview</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {isArticlePreview ? (
+                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3 min-h-[200px] max-h-[320px] overflow-y-auto">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs font-mono">{newArticleCategory}</Badge>
+                      {newArticleSubtopic && (
+                        <Badge variant="outline" className="text-xs">{newArticleSubtopic}</Badge>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground">{newArticleTitle || "Untitled Article"}</h3>
+                    {newArticleExcerpt && (
+                      <p className="text-xs text-muted-foreground italic border-l-2 border-primary pl-2.5">
+                        {newArticleExcerpt}
+                      </p>
+                    )}
+                    <div className="whitespace-pre-line text-xs leading-relaxed text-foreground/90 pt-2 border-t border-border font-sans">
+                      {newArticleContent || "No content written yet."}
+                    </div>
+                  </div>
+                ) : (
+                  <Textarea
+                    placeholder="Write complete article with markdown explanations, code blocks, and diagrams..."
+                    rows={8}
+                    required
+                    value={newArticleContent}
+                    onChange={(e) => setNewArticleContent(e.target.value)}
+                    className="font-mono text-xs leading-relaxed"
+                  />
+                )}
+              </div>
+
+              {/* Publication Status Selector */}
+              <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-3">
+                <label className="font-semibold text-foreground block">Publication Status</label>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <label
+                    className={cn(
+                      "flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors text-xs",
+                      newArticleStatus === "PUBLISHED"
+                        ? "border-emerald-500 bg-emerald-500/10 text-foreground font-semibold"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="articleStatus"
+                      value="PUBLISHED"
+                      checked={newArticleStatus === "PUBLISHED"}
+                      onChange={() => setNewArticleStatus("PUBLISHED")}
+                      className="sr-only"
+                    />
+                    <div className={cn("h-2 w-2 rounded-full", newArticleStatus === "PUBLISHED" ? "bg-emerald-500" : "bg-muted-foreground")} />
+                    <div>
+                      <div className="font-medium">Publish Live Immediately</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">Visible to all students now</div>
+                    </div>
+                  </label>
+
+                  <label
+                    className={cn(
+                      "flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors text-xs",
+                      newArticleStatus === "DRAFT"
+                        ? "border-primary bg-primary/10 text-foreground font-semibold"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="articleStatus"
+                      value="DRAFT"
+                      checked={newArticleStatus === "DRAFT"}
+                      onChange={() => setNewArticleStatus("DRAFT")}
+                      className="sr-only"
+                    />
+                    <div className={cn("h-2 w-2 rounded-full", newArticleStatus === "DRAFT" ? "bg-primary" : "bg-muted-foreground")} />
+                    <div>
+                      <div className="font-medium">Save as Internal Draft</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">Hidden until published</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowArticleModal(false)}
+                  className="text-xs cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingArticle}
+                  className="text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                >
+                  {isSubmittingArticle ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <PenSquare className="h-3.5 w-3.5" />
+                  )}
+                  <span>{newArticleStatus === "PUBLISHED" ? "Publish Article" : "Save as Draft"}</span>
                 </Button>
               </div>
             </form>

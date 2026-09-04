@@ -170,6 +170,34 @@ export async function getMyArticles(authorId: string, status?: string) {
 
 // ---- Admin ----
 
+export interface AdminCreateArticleInput extends ArticleInput {
+  status?: "DRAFT" | "PUBLISHED";
+}
+
+export async function adminCreateArticle(authorId: string, input: AdminCreateArticleInput) {
+  const slug = await uniqueArticleSlug(input.title);
+  const status = input.status || "PUBLISHED";
+  const publishedAt = status === "PUBLISHED" ? new Date() : null;
+
+  const article = await prisma.article.create({
+    data: {
+      title: input.title,
+      slug,
+      excerpt: input.excerpt,
+      content: input.content,
+      coverImage: input.coverImage || null,
+      category: input.category as never,
+      subtopic: input.subtopic,
+      authorId,
+      status,
+      publishedAt,
+    },
+    include: articleInclude,
+  });
+
+  return toArticleDto(article);
+}
+
 export async function adminListArticles(status?: string) {
   const where = status ? { status: status as never } : {};
   return prisma.article.findMany({
