@@ -437,8 +437,10 @@ export default function AdminPage() {
   };
 
   const handleSwitchAccount = async () => {
-    await logout();
-    router.push("/admin/signin");
+    if (window.confirm("Are you sure you want to sign out of the Admin panel?")) {
+      await logout();
+      router.push("/admin/signin");
+    }
   };
 
   // 1. LOADING / VERIFYING STATE

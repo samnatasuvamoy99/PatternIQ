@@ -20,6 +20,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -29,18 +30,38 @@ const NAV_LINKS = [
   { name: "Community", href: "/articles", icon: FileText },
 ];
 
+const AUTH_ROUTES = [
+  "/login",
+  "/register",
+  "/admin/signin",
+  "/admin/signup",
+  "/admin/sinin",
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Do not render navbar on authentication pages
+  const isAuthPage = AUTH_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  );
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined") {
       const isDarkMode = document.documentElement.classList.contains("dark");
       setIsDark(isDarkMode);
     }
   }, []);
+
+  if (isAuthPage) {
+    return null;
+  }
 
   const toggleTheme = () => {
     if (typeof document !== "undefined") {
@@ -117,7 +138,7 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={logout}
+                onClick={() => setShowLogoutConfirm(true)}
                 aria-label="Logout"
                 className="text-muted-foreground hover:text-destructive"
               >
@@ -201,7 +222,7 @@ export function Navbar() {
                 >
                   Dashboard ({user.name})
                 </Link>
-                <Button size="sm" variant="outline" onClick={logout}>
+                <Button size="sm" variant="outline" onClick={() => setShowLogoutConfirm(true)}>
                   Log Out
                 </Button>
               </div>
@@ -222,6 +243,57 @@ export function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Modal - Portaled to document.body to avoid navbar stacking context / blur issues */}
+      {showLogoutConfirm &&
+        mounted &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex min-h-screen w-screen items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            <div
+              className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                  <LogOut className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Sign out of PatternIQ?</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Are you sure you want to log out?</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                You will need to sign back in to access your study progress, revision queue, and personalized problem list.
+              </p>
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border/60">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLogoutConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="gap-1.5"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Yes, Log Out</span>
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </header>
   );
 }
