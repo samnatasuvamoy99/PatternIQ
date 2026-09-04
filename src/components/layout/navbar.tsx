@@ -17,6 +17,7 @@ import {
   Sun,
   Menu,
   X,
+  Lock,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -72,10 +73,12 @@ export function Navbar() {
           {NAV_LINKS.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const Icon = item.icon;
+            const targetHref = user ? item.href : `/login?redirect=${encodeURIComponent(item.href)}`;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={targetHref}
+                title={!user ? `${item.name} (Sign in required)` : item.name}
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
                   isActive
@@ -85,6 +88,9 @@ export function Navbar() {
               >
                 <Icon className="h-4 w-4" />
                 <span>{item.name}</span>
+                {!user && (
+                  <Lock className="h-3 w-3 text-muted-foreground/50 ml-0.5" />
+                )}
               </Link>
             );
           })}
@@ -157,22 +163,33 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-b border-border bg-background px-4 pt-2 pb-4 md:hidden">
           <div className="space-y-1">
-            {NAV_LINKS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium",
-                  pathname.startsWith(item.href)
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </Link>
-            ))}
+            {NAV_LINKS.map((item) => {
+              const targetHref = user ? item.href : `/login?redirect=${encodeURIComponent(item.href)}`;
+              return (
+                <Link
+                  key={item.href}
+                  href={targetHref}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium",
+                    pathname.startsWith(item.href)
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </div>
+                  {!user && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                      <Lock className="h-3 w-3" />
+                      <span>Sign in</span>
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
           <div className="mt-4 border-t border-border pt-4">
             {user ? (

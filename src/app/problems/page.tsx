@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   FileText,
@@ -265,7 +266,8 @@ export default function ProblemsPage() {
   }, [hierarchy, searchTerm, difficultyFilter, statusFilter]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="border-b border-border/60 pb-6">
         <h1 className="text-3xl font-bold tracking-tight">Curated Problems Catalog</h1>
@@ -666,5 +668,6 @@ export default function ProblemsPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 }

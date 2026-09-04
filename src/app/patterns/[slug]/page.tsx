@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { CodeViewer } from "@/components/ui/code-viewer";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { apiClient } from "@/lib/api-client";
 import { MOCK_PATTERNS, ProblemData, PatternData } from "@/lib/mock-data";
 import {
@@ -138,7 +139,8 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Back link */}
       <Link href="/patterns" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" />
@@ -397,5 +399,6 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

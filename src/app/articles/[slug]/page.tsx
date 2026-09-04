@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { MOCK_ARTICLES } from "@/lib/mock-data";
 import {
   ArrowLeft,
@@ -84,7 +85,8 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Back link */}
       <Link href="/articles" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" />
@@ -213,5 +215,6 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

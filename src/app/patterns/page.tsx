@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { apiClient } from "@/lib/api-client";
 import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
@@ -426,8 +427,10 @@ function PatternsContent() {
 
 export default function PatternsPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-muted-foreground">Loading curriculum...</div>}>
-      <PatternsContent />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<div className="p-12 text-center text-muted-foreground">Loading curriculum...</div>}>
+        <PatternsContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

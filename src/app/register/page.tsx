@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Brain, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Brain, ArrowRight, Loader2, AlertCircle, Lock } from "lucide-react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams?.get("redirect") || "/dashboard";
+
   const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,11 +30,16 @@ export default function RegisterPage() {
     setIsLoading(false);
 
     if (res.success) {
-      router.push("/dashboard");
+      router.push(redirect);
     } else {
       setError(res.error || "Failed to create account. Please try again.");
     }
   };
+
+  const loginHref =
+    redirect && redirect !== "/dashboard"
+      ? `/login?redirect=${encodeURIComponent(redirect)}`
+      : "/login";
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
@@ -53,6 +61,13 @@ export default function RegisterPage() {
               <CardDescription>Enter your details below to create your free student account</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {redirect && redirect !== "/dashboard" && (
+                <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+                  <Lock className="h-4 w-4 shrink-0" />
+                  <span>Create an account to access that page</span>
+                </div>
+              )}
+
               {error && (
                 <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -110,7 +125,7 @@ export default function RegisterPage() {
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Already have an account?{" "}
-                <Link href="/login" className="font-semibold text-primary hover:underline">
+                <Link href={loginHref} className="font-semibold text-primary hover:underline">
                   Sign in
                 </Link>
               </p>
@@ -119,5 +134,19 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

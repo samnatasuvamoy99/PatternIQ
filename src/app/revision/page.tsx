@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CodeViewer } from "@/components/ui/code-viewer";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { MOCK_REVISIONS, MOCK_PATTERNS } from "@/lib/mock-data";
 import {
   Repeat,
@@ -50,7 +51,8 @@ export default function RevisionPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6">
         <div>
@@ -197,5 +199,6 @@ export default function RevisionPage() {
         </p>
       </Card>
     </div>
+    </AuthGuard>
   );
 }

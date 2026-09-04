@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { MOCK_ARTICLES, ArticleData } from "@/lib/mock-data";
 import {
   FileText,
@@ -44,7 +45,8 @@ export default function ArticlesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6">
         <div>
@@ -157,5 +159,6 @@ export default function ArticlesPage() {
         ))}
       </div>
     </div>
+    </AuthGuard>
   );
 }

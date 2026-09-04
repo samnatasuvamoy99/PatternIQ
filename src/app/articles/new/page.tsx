@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { ArrowLeft, Send, Eye, PenSquare } from "lucide-react";
 
 const CATEGORIES = ["DSA", "SYSTEM_DESIGN", "DEVELOPMENT", "CORE_CS", "DATABASE", "GENAI"];
@@ -35,7 +36,8 @@ export default function NewArticlePage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+    <AuthGuard>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* Back link */}
       <Link href="/articles" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" />
@@ -152,5 +154,6 @@ export default function NewArticlePage() {
         </form>
       )}
     </div>
+    </AuthGuard>
   );
 }
