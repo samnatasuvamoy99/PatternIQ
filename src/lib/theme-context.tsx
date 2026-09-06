@@ -16,21 +16,8 @@ export const THEME_STORAGE_KEY = "patterniq_theme";
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Read current class from documentElement initially if already executed by inline script
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-        if (stored === "dark" || stored === "light") {
-          return stored;
-        }
-        if (document.documentElement.classList.contains("dark")) {
-          return "dark";
-        }
-      } catch {}
-    }
-    return "dark";
-  });
+  // Always initialize with "dark" during initial render to ensure server & client initial hydration match exactly
+  const [theme, setThemeState] = useState<ThemeMode>("dark");
 
   useEffect(() => {
     try {

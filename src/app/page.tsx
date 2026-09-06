@@ -29,30 +29,44 @@ export default function Home() {
       {/* ========================================================================= */}
       {/* 1. HERO SECTION */}
       {/* ========================================================================= */}
-      <section className="relative w-full overflow-hidden border-b border-border/40 py-24 md:py-36">
+      <section className="relative w-full overflow-hidden border-b border-border/40 py-24 md:py-36 bg-slate-100/70 dark:bg-slate-900/40">
         {/* Landing Graphic Background with Light & Dark Mode Optimization */}
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 dark:opacity-20 dark:brightness-75 pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 dark:opacity-80 pointer-events-none transition-opacity duration-300"
           style={{ backgroundImage: "url('/landing-bg.png')" }}
         />
         {/* Radial and Vertical Vignette for High-Contrast Text Legibility */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-background/30 via-background/80 to-background pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-background/50 to-background pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background pointer-events-none" />
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
-        
           {/* Primary Headline */}
           <h1 className="font-heading text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.12]">
-            Stop Memorizing{" "}
-            <span className="text-muted-foreground/60 line-through decoration-destructive/50">
-              500 Questions
+            <span 
+              className="inline-block animate-word-reveal" 
+              style={{ animationDelay: "0ms" }}
+            >
+              Stop Memorizing
+            </span>{" "}
+            <span 
+              className="inline-block animate-word-reveal" 
+              style={{ animationDelay: "300ms" }}
+            >
+              <span className="text-muted-foreground/60 line-through decoration-destructive/50">
+                500 Questions
+              </span>
+              .
             </span>
-            .<br />
-            Master{" "}
-            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-              DSA Patterns
+            <br />
+            <span 
+              className="inline-block animate-word-reveal" 
+              style={{ animationDelay: "600ms" }}
+            >
+              Master{" "}
+              <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+                DSA Patterns.
+              </span>
             </span>
-            .
           </h1>
 
           {/* Subtitle */}
@@ -77,19 +91,19 @@ export default function Home() {
 
           {/* Stats Strip */}
           <div className="mt-16 grid grid-cols-2 gap-3 sm:grid-cols-4 pt-6">
-            <div className="p-4 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xs space-y-1">
+            <div className="p-4 rounded-2xl border border-border/70 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-xs space-y-1">
               <p className="font-heading text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">14+</p>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Core Patterns</p>
             </div>
-            <div className="p-4 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xs space-y-1">
+            <div className="p-4 rounded-2xl border border-border/70 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-xs space-y-1">
               <p className="font-heading text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">150+</p>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Curated Problems</p>
             </div>
-            <div className="p-4 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xs space-y-1">
+            <div className="p-4 rounded-2xl border border-border/70 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-xs space-y-1">
               <p className="font-heading text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">4 Languages</p>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">C++, Java, Python, JS</p>
             </div>
-            <div className="p-4 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xs space-y-1">
+            <div className="p-4 rounded-2xl border border-border/70 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-xs space-y-1">
               <p className="font-heading text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">100%</p>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Active Recall</p>
             </div>

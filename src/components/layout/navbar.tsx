@@ -109,7 +109,11 @@ export function Navbar() {
             aria-label="Toggle theme"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted ? (
+              isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
+            ) : (
+              <span className="h-4 w-4" />
+            )}
           </button>
 
           {user ? (
@@ -165,7 +169,11 @@ export function Navbar() {
             aria-label="Toggle theme"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground"
           >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted ? (
+              isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
+            ) : (
+              <span className="h-4 w-4" />
+            )}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

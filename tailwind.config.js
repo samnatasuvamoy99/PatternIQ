@@ -15,6 +15,23 @@ module.exports = {
       },
     },
     extend: {
+      keyframes: {
+        "word-reveal": {
+          "0%": { 
+            opacity: "0", 
+            transform: "translateY(12px) scale(0.96)", 
+            filter: "blur(6px)" 
+          },
+          "100%": { 
+            opacity: "1", 
+            transform: "translateY(0) scale(1)", 
+            filter: "blur(0)" 
+          },
+        },
+      },
+      animation: {
+        "word-reveal": "word-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
+      },
       colors: {
         border: "var(--border)",
         input: "var(--input)",
