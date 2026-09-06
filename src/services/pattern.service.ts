@@ -56,10 +56,13 @@ export async function getPatternBySlug(slug: string, userId?: string) {
 
 interface PatternInput {
   topicId: string; number: number; name: string; shortDescription?: string;
-  whatIsThis?: string; intuition?: string; coreIdea?: string; interviewRule?: string;
+  whatIsThis?: string; intuition?: string; identificationSignals?: string; executionRecipe?: string;
+  coreIdea?: string; interviewRule?: string;
   difficulty?: "EASY" | "MEDIUM" | "HARD"; importance?: number;
   timeComplexity?: string; spaceComplexity?: string; pseudocode?: string;
-  cppTemplate?: string; javaTemplate?: string; jsTemplate?: string;
+  cppTemplate?: string; javaTemplate?: string; jsTemplate?: string; pyTemplate?: string;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  benchmarkProblemIds?: string[];
   useCases?: string[]; whenNotToUse?: string[]; warnings?: string[];
 }
 
@@ -68,6 +71,7 @@ export async function adminListPatterns() {
     orderBy: [{ topicId: "asc" }, { order: "asc" }],
     include: {
       topic: { select: { id: true, name: true, slug: true } },
+      problems: { include: { problem: true } },
       _count: { select: { problems: true } },
     },
   });
@@ -84,11 +88,12 @@ export async function adminGetPattern(id: string) {
 
 export async function adminCreatePattern(input: PatternInput) {
   const slug = await uniquePatternSlug(input.name);
-  const { useCases, whenNotToUse, warnings, ...rest } = input;
+  const { useCases, whenNotToUse, warnings, benchmarkProblemIds, ...rest } = input;
 
-  return prisma.pattern.create({
+  const createdPattern = await prisma.pattern.create({
     data: {
       ...rest,
+      status: input.status || "PUBLISHED",
       slug,
       useCases: {
         create: [
@@ -100,11 +105,25 @@ export async function adminCreatePattern(input: PatternInput) {
     },
     include: { useCases: true, warnings: true },
   });
+
+  if (Array.isArray(benchmarkProblemIds) && benchmarkProblemIds.length > 0) {
+    await prisma.patternProblem.createMany({
+      data: benchmarkProblemIds.map((probId, idx) => ({
+        patternId: createdPattern.id,
+        problemId: probId,
+        order: idx,
+        isCore: true,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  return adminGetPattern(createdPattern.id);
 }
 
 export async function adminUpdatePattern(id: string, input: Partial<PatternInput>) {
   await adminGetPattern(id);
-  const { useCases, whenNotToUse, warnings, name, ...rest } = input;
+  const { useCases, whenNotToUse, warnings, benchmarkProblemIds, name, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
   if (name) {
     data.name = name;
@@ -125,7 +144,23 @@ export async function adminUpdatePattern(id: string, input: Partial<PatternInput
     data.warnings = { create: warnings.map((c, i) => ({ content: c, order: i })) };
   }
 
-  return prisma.pattern.update({ where: { id }, data, include: { useCases: true, warnings: true } });
+  if (Array.isArray(benchmarkProblemIds)) {
+    await prisma.patternProblem.deleteMany({ where: { patternId: id } });
+    if (benchmarkProblemIds.length > 0) {
+      await prisma.patternProblem.createMany({
+        data: benchmarkProblemIds.map((probId, idx) => ({
+          patternId: id,
+          problemId: probId,
+          order: idx,
+          isCore: true,
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  await prisma.pattern.update({ where: { id }, data });
+  return adminGetPattern(id);
 }
 
 export async function adminDeletePattern(id: string) {

@@ -17,14 +17,31 @@ const adminRegisterSchema = z.object({
 export const POST = apiHandler(async (req: NextRequest) => {
   const body = adminRegisterSchema.parse(await parseJson(req));
 
-  const validKey = process.env.ADMIN_INVITE_KEY || "PatternIQAdmin2026";
-  if (!body.adminKey || (body.adminKey !== validKey && body.adminKey !== "admin123")) {
+  const allowedEmail = (process.env.ADMIN_EMAIL || "suvamoyadmin907@gmail.com").toLowerCase();
+  if (body.email.toLowerCase() !== allowedEmail) {
+    throw ApiError.forbidden(
+      `Admin registration is restricted. Only the designated master admin email (${allowedEmail}) is authorized to register as an administrator.`,
+      "UNAUTHORIZED_ADMIN_EMAIL"
+    );
+  }
+
+  const validKey = process.env.ADMIN_INVITE_KEY || "PatternIQ_MasterAdmin_SecretKey_2026!#";
+  if (!body.adminKey || body.adminKey !== validKey) {
     throw ApiError.forbidden("Invalid administrator security key", "INVALID_ADMIN_KEY");
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: body.email } });
-  if (existing) {
+  const existingAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+  const existingUser = await prisma.user.findUnique({ where: { email: body.email } });
+
+  if (existingUser) {
     throw ApiError.conflict("An account with this email already exists", "EMAIL_TAKEN");
+  }
+
+  if (existingAdmin) {
+    throw ApiError.forbidden(
+      "An administrator account has already been registered for this platform. Public admin registration is disabled.",
+      "ADMIN_ALREADY_INITIALIZED"
+    );
   }
 
   const passwordHash = await hashPassword(body.password);

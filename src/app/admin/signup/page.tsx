@@ -15,7 +15,7 @@ export default function AdminSignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [adminKey, setAdminKey] = useState("PatternIQAdmin2026");
+  const [adminKey, setAdminKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -142,11 +142,10 @@ export default function AdminSignUpPage() {
                     <KeyRound className="h-3.5 w-3.5 text-amber-500" />
                     <span>Administrator Security Key</span>
                   </label>
-                  <span className="text-[10px] text-muted-foreground font-mono">Demo: PatternIQAdmin2026</span>
                 </div>
                 <Input
-                  type="text"
-                  placeholder="PatternIQAdmin2026"
+                  type="password"
+                  placeholder="Enter secret admin key..."
                   required
                   value={adminKey}
                   onChange={(e) => setAdminKey(e.target.value)}
@@ -154,7 +153,7 @@ export default function AdminSignUpPage() {
                   className="font-mono text-xs"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Security authorization passkey required to elevate account to the `ADMIN` role.
+                  Security authorization passkey required from system owner (.env `ADMIN_INVITE_KEY`).
                 </p>
               </div>
 

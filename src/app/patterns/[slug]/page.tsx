@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { CodeViewer } from "@/components/ui/code-viewer";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { FormattedText } from "@/components/ui/formatted-text";
 import { apiClient } from "@/lib/api-client";
 import {
   ArrowLeft,
@@ -21,6 +22,11 @@ import {
   PlusCircle,
   Trash2,
   Loader2,
+  Sparkles,
+  Zap,
+  ListOrdered,
+  ArrowRight,
+  ChevronRight,
 } from "lucide-react";
 
 interface ProblemData {
@@ -45,6 +51,9 @@ interface PatternData {
   importance: number;
   summary: string;
   intuition: string;
+  identificationSignals?: string;
+  executionRecipe?: string;
+  interviewRule?: string;
   identificationRules: string[];
   approachSteps: string[];
   complexity: {
@@ -127,6 +136,9 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
             importance: apiData.importance || 5,
             summary: apiData.shortDescription || apiData.whatIsThis || "",
             intuition: apiData.intuition || apiData.coreIdea || apiData.whatIsThis || "",
+            identificationSignals: apiData.identificationSignals || "",
+            executionRecipe: apiData.executionRecipe || "",
+            interviewRule: apiData.interviewRule || "",
             identificationRules: rules,
             approachSteps: warnings.length > 0 ? warnings : [
               "Identify the problem constraints and boundary conditions.",
@@ -297,28 +309,36 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
 
                   {/* TAB 1: Intuition & Identification */}
                   <TabsContent value="intuition" className="space-y-6 pt-3">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <BrainCircuit className="h-4 w-4 text-primary" />
-                          <span>The Mental Model</span>
+                    {/* 1. Mental Model & Core Intuition */}
+                    <Card className="border-primary/20 bg-card">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2 text-primary font-bold">
+                          <BrainCircuit className="h-4.5 w-4.5" />
+                          <span>1. Mental Model & Core Intuition</span>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4 text-sm leading-relaxed text-foreground/90">
-                        <p>{pattern.intuition || "Detailed intuition notes will be published soon."}</p>
+                      <CardContent>
+                        {pattern.intuition ? (
+                          <FormattedText content={pattern.intuition} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">Detailed mental model concept will be updated soon.</p>
+                        )}
                       </CardContent>
                     </Card>
 
-                    {pattern.identificationRules.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <Target className="h-4 w-4 text-primary" />
-                            <span>Interview Identification Signals</span>
-                          </CardTitle>
-                          <CardDescription>Look for these indicators in problem descriptions</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                    {/* 2. Identification Signals */}
+                    <Card className="border-border">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2 text-foreground font-bold">
+                          <Target className="h-4.5 w-4.5 text-emerald-500" />
+                          <span>2. Identification Signals</span>
+                        </CardTitle>
+                        <CardDescription>Look for these key indicators & triggers in problem statements</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {pattern.identificationSignals ? (
+                          <FormattedText content={pattern.identificationSignals} />
+                        ) : pattern.identificationRules.length > 0 ? (
                           <ul className="space-y-2 text-sm text-muted-foreground">
                             {pattern.identificationRules.map((rule, idx) => (
                               <li key={idx} className="flex items-start gap-2.5">
@@ -327,23 +347,48 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                               </li>
                             ))}
                           </ul>
-                        </CardContent>
-                      </Card>
-                    )}
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">Identification signals will be published soon.</p>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-primary" />
-                          <span>Step-by-Step Execution Recipe</span>
+                    {/* 3. Execution Recipe */}
+                    <Card className="border-border">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2 text-foreground font-bold">
+                          <ListOrdered className="h-4.5 w-4.5 text-blue-500" />
+                          <span>3. Execution Recipe</span>
+                        </CardTitle>
+                        <CardDescription>Step-by-step mental procedure to execute this pattern</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {pattern.executionRecipe ? (
+                          <FormattedText content={pattern.executionRecipe} />
+                        ) : (
+                          <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                            {pattern.approachSteps.map((step, idx) => (
+                              <li key={idx} className="leading-relaxed">{step}</li>
+                            ))}
+                          </ol>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* 4. Interview Identification Rule */}
+                    <Card className="border-amber-500/20 bg-amber-500/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2 text-amber-500 font-bold">
+                          <Zap className="h-4.5 w-4.5" />
+                          <span>4. Interview Identification Rule</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                          {pattern.approachSteps.map((step, idx) => (
-                            <li key={idx} className="leading-relaxed">{step}</li>
-                          ))}
-                        </ol>
+                        {pattern.interviewRule ? (
+                          <FormattedText content={pattern.interviewRule} className="text-amber-200/90 font-medium" />
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">Golden rule for quick recognition in tech interviews.</p>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -400,10 +445,18 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                 {/* ATTACHED PROBLEMS LIST */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Code2 className="h-4 w-4 text-primary" />
-                      <span>Practice Problems Checklist</span>
-                    </CardTitle>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Code2 className="h-4 w-4 text-primary" />
+                        <span>Practice Problems Checklist</span>
+                      </CardTitle>
+                      <Link href={`/problems?pattern=${pattern.slug}`}>
+                        <Button variant="ghost" size="sm" className="text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10 h-7 px-2.5">
+                          <span>View in Catalog</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
                     <CardDescription>
                       Reinforce this pattern by solving these canonical interview problems
                     </CardDescription>
@@ -413,15 +466,20 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                       problems.map((prob) => (
                         <div key={prob.id} className="py-3 flex items-center justify-between gap-4">
                           <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-foreground truncate">
-                                {prob.title}
-                              </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link
+                                href={`/problems?pattern=${pattern.slug}&problem=${prob.id}`}
+                                className="text-sm font-semibold text-foreground hover:text-primary hover:underline truncate inline-flex items-center gap-1 group"
+                                title="Go to Problems page and view problem"
+                              >
+                                <span>{prob.title}</span>
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </Link>
                               <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"}>
                                 {prob.difficulty}
                               </Badge>
                             </div>
-                            <span className="text-xs text-muted-foreground font-mono">
+                            <span className="text-xs text-muted-foreground font-mono block">
                               {prob.platform}
                             </span>
                           </div>
@@ -440,8 +498,10 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                               href={prob.solveUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg border border-border hover:bg-muted text-xs font-medium text-foreground transition-colors"
+                              title="Solve directly on LeetCode"
                             >
+                              <span>Start</span>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>
                           </div>

@@ -138,10 +138,7 @@ export default function AdminSignInPage() {
 
           <CardFooter className="flex flex-col space-y-2 border-t border-border/60 bg-muted/20 py-4 text-center text-xs text-muted-foreground">
             <div>
-              New administrator?{" "}
-              <Link href="/admin/signup" className="font-semibold text-primary hover:underline">
-                Create Admin Account
-              </Link>
+              Protected Console — Admin access is restricted exclusively to authorized platform administrators.
             </div>
           </CardFooter>
         </Card>

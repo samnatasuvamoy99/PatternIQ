@@ -375,9 +375,14 @@ function PatternsContent() {
                               </div>
 
                               <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 border-t lg:border-t-0 border-border/50 pt-2 lg:pt-0">
-                                <span className="text-xs text-muted-foreground font-medium">
-                                  {pat.problemsCount} Practice Problems
-                                </span>
+                                <Link
+                                  href={`/problems?pattern=${pat.slug}`}
+                                  className="text-xs text-muted-foreground hover:text-primary font-medium hover:underline inline-flex items-center gap-1 transition-colors"
+                                  title="View problems for this pattern in catalog"
+                                >
+                                  <span>{pat.problemsCount} Practice Problems</span>
+                                  <ArrowRight className="h-3 w-3" />
+                                </Link>
                                 <Link href={`/patterns/${pat.slug}`}>
                                   <Button size="sm" className="gap-1.5 text-xs h-8">
                                     <span>Study Pattern</span>

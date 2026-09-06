@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { AdminUsersTab } from "@/components/admin/admin-users-tab";
+import { FormattedTextarea } from "@/components/ui/formatted-textarea";
 import {
   Shield,
   Layers,
@@ -76,6 +77,8 @@ interface PatternItem {
   shortDescription?: string | null;
   whatIsThis?: string | null;
   intuition?: string | null;
+  identificationSignals?: string | null;
+  executionRecipe?: string | null;
   coreIdea?: string | null;
   interviewRule?: string | null;
   timeComplexity?: string | null;
@@ -84,7 +87,9 @@ interface PatternItem {
   cppTemplate?: string | null;
   javaTemplate?: string | null;
   jsTemplate?: string | null;
+  pyTemplate?: string | null;
   topic?: { id: string; name: string; slug: string };
+  problems?: Array<{ id?: string; problemId?: string; problem?: ProblemItem }>;
   _count?: { problems: number };
 }
 
@@ -233,6 +238,10 @@ export default function AdminPage() {
   const [newPatternJs, setNewPatternJs] = useState(
     `function solve(nums) {\n    let left = 0, right = nums.length - 1;\n    while (left < right) {\n        // implementation\n    }\n    return [];\n}`
   );
+  const [newPatternSignals, setNewPatternSignals] = useState("");
+  const [newPatternRecipe, setNewPatternRecipe] = useState("");
+  const [newPatternSelectedProblems, setNewPatternSelectedProblems] = useState<string[]>([]);
+  const [editingPatternSelectedProblems, setEditingPatternSelectedProblems] = useState<string[]>([]);
   const [isSubmittingPattern, setIsSubmittingPattern] = useState(false);
 
   // -------------------------------------------------------------
@@ -450,6 +459,9 @@ export default function AdminPage() {
   // -------------------------------------------------------------
   // HANDLERS: 3. CREATE PATTERN
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // HANDLERS: 3. CREATE PATTERN
+  // -------------------------------------------------------------
   const handleCreatePattern = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPatternName.trim() || !newPatternTopicId) return;
@@ -465,6 +477,8 @@ export default function AdminPage() {
           shortDescription: newPatternShortDesc.trim() || undefined,
           whatIsThis: newPatternWhatIsThis.trim() || undefined,
           intuition: newPatternIntuition.trim() || undefined,
+          identificationSignals: newPatternSignals.trim() || undefined,
+          executionRecipe: newPatternRecipe.trim() || undefined,
           coreIdea: newPatternCoreIdea.trim() || undefined,
           interviewRule: newPatternInterviewRule.trim() || undefined,
           difficulty: newPatternDifficulty,
@@ -476,18 +490,23 @@ export default function AdminPage() {
           javaTemplate: newPatternJava.trim() || undefined,
           jsTemplate: newPatternJs.trim() || undefined,
           pyTemplate: newPatternPy.trim() || undefined,
+          status: "PUBLISHED",
+          benchmarkProblemIds: newPatternSelectedProblems,
         }),
       });
 
       if (res.success && res.data) {
         setPatterns((prev) => [res.data!, ...prev]);
         setShowPatternModal(false);
-        showSuccess(`Pattern "${newPatternName}" successfully created!`);
+        showSuccess(`Pattern "${newPatternName}" successfully created and published!`);
         setNewPatternName("");
         setNewPatternShortDesc("");
         setNewPatternIntuition("");
+        setNewPatternSignals("");
+        setNewPatternRecipe("");
         setNewPatternCoreIdea("");
         setNewPatternInterviewRule("");
+        setNewPatternSelectedProblems([]);
         setNewPatternNumber((n) => Number(n) + 1);
         loadAllAdminData();
       } else {
@@ -518,6 +537,8 @@ export default function AdminPage() {
           shortDescription: editingPattern.shortDescription?.trim() || undefined,
           whatIsThis: editingPattern.whatIsThis?.trim() || undefined,
           intuition: editingPattern.intuition?.trim() || undefined,
+          identificationSignals: editingPattern.identificationSignals?.trim() || undefined,
+          executionRecipe: editingPattern.executionRecipe?.trim() || undefined,
           coreIdea: editingPattern.coreIdea?.trim() || undefined,
           interviewRule: editingPattern.interviewRule?.trim() || undefined,
           difficulty: editingPattern.difficulty,
@@ -528,6 +549,8 @@ export default function AdminPage() {
           cppTemplate: editingPattern.cppTemplate?.trim() || undefined,
           javaTemplate: editingPattern.javaTemplate?.trim() || undefined,
           jsTemplate: editingPattern.jsTemplate?.trim() || undefined,
+          pyTemplate: editingPattern.pyTemplate?.trim() || undefined,
+          benchmarkProblemIds: editingPatternSelectedProblems,
         }),
       });
 
@@ -535,6 +558,7 @@ export default function AdminPage() {
         setPatterns((prev) => prev.map((p) => (p.id === editingPattern.id ? { ...p, ...res.data! } : p)));
         setEditingPattern(null);
         showSuccess(`Pattern "${editingPattern.name}" successfully updated!`);
+        loadAllAdminData();
       } else {
         showError(res.error?.message || "Failed to update pattern");
       }
@@ -1819,35 +1843,114 @@ export default function AdminPage() {
                   </div>
                 </TabsContent>
 
-                {/* TAB 2: Intuition */}
-                <TabsContent value="intuition" className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Mental Model & Core Intuition</label>
-                    <Textarea
-                      placeholder="Explain the underlying visual or mathematical concept..."
-                      rows={4}
+                {/* TAB 2: Intuition & Rules */}
+                <TabsContent value="intuition" className="space-y-4">
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                      <span>1. Mental Model & Core Intuition</span>
+                    </h3>
+                    <FormattedTextarea
                       value={newPatternIntuition}
-                      onChange={(e) => setNewPatternIntuition(e.target.value)}
+                      onChange={setNewPatternIntuition}
+                      placeholder="Explain the underlying visual, mathematical, or structural concept... Use Bold & Underline for core keywords."
+                      rows={3}
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Interview Identification Rule</label>
-                    <Input
-                      placeholder="e.g. Sorted array + subarray constraints -> Two Pointer or Sliding Window"
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                      <span>2. Identification Signals</span>
+                    </h3>
+                    <FormattedTextarea
+                      value={newPatternSignals}
+                      onChange={setNewPatternSignals}
+                      placeholder="List key keywords or pattern indicators in problem descriptions (e.g. - Array is sorted\n- Contiguous subarray sum)."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                      <span>3. Execution Recipe</span>
+                    </h3>
+                    <FormattedTextarea
+                      value={newPatternRecipe}
+                      onChange={setNewPatternRecipe}
+                      placeholder="Step-by-step procedure to execute this pattern (e.g. 1. Maintain left pointer 2. Expand right pointer)."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                      <span>4. Interview Identification Rule</span>
+                    </h3>
+                    <FormattedTextarea
                       value={newPatternInterviewRule}
-                      onChange={(e) => setNewPatternInterviewRule(e.target.value)}
+                      onChange={setNewPatternInterviewRule}
+                      placeholder="e.g. Sorted array + contiguous subarray constraints -> Apply Sliding Window or Two Pointers."
+                      rows={2}
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-foreground">Pseudocode Blueprint</label>
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
+                    <h3 className="text-xs font-bold text-amber-500 flex items-center gap-1.5 uppercase tracking-wider">
+                      <span>5. Pseudocode Blueprint</span>
+                    </h3>
                     <Textarea
                       rows={5}
-                      className="font-mono text-[11px]"
+                      className="font-mono text-[11px] bg-background"
                       value={newPatternPseudocode}
                       onChange={(e) => setNewPatternPseudocode(e.target.value)}
                     />
+                  </div>
+
+                  {/* 6. Benchmark Problems Selection */}
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
+                        Benchmark Problems ({newPatternSelectedProblems.length} Selected)
+                      </h3>
+                      <span className="text-[11px] text-muted-foreground">Select problems to link to this pattern</span>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-background divide-y divide-border/60">
+                      {problems.length > 0 ? (
+                        problems.map((prob) => {
+                          const isChecked = newPatternSelectedProblems.includes(prob.id);
+                          return (
+                            <label
+                              key={prob.id}
+                              className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setNewPatternSelectedProblems((prev) => [...prev, prob.id]);
+                                    } else {
+                                      setNewPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
+                                    }
+                                  }}
+                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                                />
+                                <span className="font-semibold text-foreground truncate">{prob.title}</span>
+                                <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
+                                  {prob.difficulty}
+                                </Badge>
+                              </div>
+                              <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className="p-4 text-center text-xs text-muted-foreground">
+                          No problems available in database. Create problems in Problems tab first to link here.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -2038,31 +2141,114 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Core Intuition</label>
-                <Textarea
-                  rows={3}
-                  value={editingPattern.intuition || ""}
-                  onChange={(e) => setEditingPattern({ ...editingPattern, intuition: e.target.value })}
-                />
-              </div>
+              <div className="space-y-4 pt-2 border-t border-border">
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>1. Mental Model & Core Intuition</span>
+                  </h3>
+                  <FormattedTextarea
+                    value={editingPattern.intuition || ""}
+                    onChange={(val) => setEditingPattern({ ...editingPattern, intuition: val })}
+                    placeholder="Explain the underlying visual, mathematical, or structural concept... Use Bold & Underline for core keywords."
+                    rows={3}
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Interview Rule</label>
-                <Input
-                  value={editingPattern.interviewRule || ""}
-                  onChange={(e) => setEditingPattern({ ...editingPattern, interviewRule: e.target.value })}
-                />
-              </div>
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>2. Identification Signals</span>
+                  </h3>
+                  <FormattedTextarea
+                    value={editingPattern.identificationSignals || ""}
+                    onChange={(val) => setEditingPattern({ ...editingPattern, identificationSignals: val })}
+                    placeholder="List key keywords or pattern indicators in problem descriptions."
+                    rows={3}
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Pseudocode</label>
-                <Textarea
-                  rows={4}
-                  className="font-mono text-[11px]"
-                  value={editingPattern.pseudocode || ""}
-                  onChange={(e) => setEditingPattern({ ...editingPattern, pseudocode: e.target.value })}
-                />
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>3. Execution Recipe</span>
+                  </h3>
+                  <FormattedTextarea
+                    value={editingPattern.executionRecipe || ""}
+                    onChange={(val) => setEditingPattern({ ...editingPattern, executionRecipe: val })}
+                    placeholder="Step-by-step procedure to execute this pattern."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                  <h3 className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>4. Interview Identification Rule</span>
+                  </h3>
+                  <FormattedTextarea
+                    value={editingPattern.interviewRule || ""}
+                    onChange={(val) => setEditingPattern({ ...editingPattern, interviewRule: val })}
+                    placeholder="e.g. Sorted array + subarray constraints -> Two Pointer or Sliding Window."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
+                  <h3 className="text-xs font-bold text-amber-500 flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>5. Pseudocode Blueprint</span>
+                  </h3>
+                  <Textarea
+                    rows={5}
+                    className="font-mono text-[11px] bg-background"
+                    value={editingPattern.pseudocode || ""}
+                    onChange={(e) => setEditingPattern({ ...editingPattern, pseudocode: e.target.value })}
+                  />
+                </div>
+
+                {/* 6. Benchmark Problems Selection */}
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
+                      Benchmark Problems ({editingPatternSelectedProblems.length} Selected)
+                    </h3>
+                    <span className="text-[11px] text-muted-foreground">Select problems to link to this pattern</span>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-background divide-y divide-border/60">
+                    {problems.length > 0 ? (
+                      problems.map((prob) => {
+                        const isChecked = editingPatternSelectedProblems.includes(prob.id);
+                        return (
+                          <label
+                            key={prob.id}
+                            className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingPatternSelectedProblems((prev) => [...prev, prob.id]);
+                                  } else {
+                                    setEditingPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
+                                  }
+                                }}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                              />
+                              <span className="font-semibold text-foreground truncate">{prob.title}</span>
+                              <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
+                                {prob.difficulty}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-center text-xs text-muted-foreground">
+                        No problems available in database. Create problems in Problems tab first.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
@@ -2163,11 +2349,12 @@ export default function AdminPage() {
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Solve URL</label>
                 <Input
-                  placeholder="https://leetcode.com/problems/3sum/"
+                  placeholder="https://leetcode.com/problems/reverse-integer/"
                   required
                   value={newProblemUrl}
                   onChange={(e) => setNewProblemUrl(e.target.value)}
                 />
+                <p className="text-[11px] text-muted-foreground">https:// will be added automatically if omitted.</p>
               </div>
 
               <div className="flex items-center gap-2 pt-1">
@@ -2265,9 +2452,11 @@ export default function AdminPage() {
                 <label className="font-semibold text-foreground">Solve URL</label>
                 <Input
                   required
+                  placeholder="https://leetcode.com/problems/..."
                   value={editingProblem.solveUrl}
                   onChange={(e) => setEditingProblem({ ...editingProblem, solveUrl: e.target.value })}
                 />
+                <p className="text-[11px] text-muted-foreground">https:// will be added automatically if omitted.</p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">

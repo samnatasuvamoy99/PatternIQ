@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -72,7 +73,8 @@ interface TopicWithPatterns {
   patterns: PatternWithProblems[];
 }
 
-export default function ProblemsPage() {
+function ProblemsContent() {
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL"); // ALL, SOLVED, UNSOLVED, STARRED
@@ -130,15 +132,44 @@ export default function ProblemsPage() {
 
           setRawTopics(loadedTopics);
 
-          // Default expand the first 2 topics and patterns
+          // Check searchParams for target pattern/problem/search
+          const targetPattern = searchParams.get("pattern");
+          const targetProblem = searchParams.get("problem");
+          const targetSearch = searchParams.get("search");
+
+          if (targetSearch) {
+            setSearchTerm(targetSearch);
+          }
+
           const expT: Record<string, boolean> = {};
           const expP: Record<string, boolean> = {};
-          loadedTopics.forEach((t, i) => {
-            if (i < 2) expT[t.slug] = true;
-            t.patterns.forEach((p) => {
-              expP[p.id] = true;
+          let hasExplicitTarget = false;
+
+          if (targetPattern || targetProblem) {
+            loadedTopics.forEach((t) => {
+              t.patterns.forEach((p) => {
+                const matchesPat = targetPattern && (p.slug === targetPattern || p.id === targetPattern);
+                const matchesProb = targetProblem && p.problems.some((pr) => pr.id === targetProblem || pr.slug === targetProblem || pr.title.toLowerCase() === targetProblem.toLowerCase());
+
+                if (matchesPat || matchesProb) {
+                  expT[t.slug] = true;
+                  expP[p.id] = true;
+                  hasExplicitTarget = true;
+                }
+              });
             });
-          });
+          }
+
+          // Default expand the first 2 topics and patterns if no explicit target
+          if (!hasExplicitTarget) {
+            loadedTopics.forEach((t, i) => {
+              if (i < 2) expT[t.slug] = true;
+              t.patterns.forEach((p) => {
+                expP[p.id] = true;
+              });
+            });
+          }
+
           setExpandedTopics(expT);
           setExpandedPatterns(expP);
         }
@@ -163,7 +194,64 @@ export default function ProblemsPage() {
     }
 
     loadCatalogAndProgress();
-  }, []);
+  }, [searchParams]);
+
+  // Smooth scroll and highlight target pattern or problem
+  useEffect(() => {
+    if (isLoading || rawTopics.length === 0) return;
+
+    const paramPattern = searchParams.get("pattern");
+    const paramProblem = searchParams.get("problem");
+
+    if (!paramPattern && !paramProblem) return;
+
+    const timer = setTimeout(() => {
+      let element: HTMLElement | null = null;
+
+      if (paramProblem) {
+        element = document.getElementById(`problem-${paramProblem}`);
+        if (!element) {
+          for (const t of rawTopics) {
+            for (const p of t.patterns) {
+              for (const pr of p.problems) {
+                if (pr.id === paramProblem || pr.slug === paramProblem || pr.title.toLowerCase() === paramProblem.toLowerCase()) {
+                  element = document.getElementById(`problem-${pr.id}`);
+                  break;
+                }
+              }
+              if (element) break;
+            }
+            if (element) break;
+          }
+        }
+      }
+
+      if (!element && paramPattern) {
+        element = document.getElementById(`pattern-${paramPattern}`);
+        if (!element) {
+          for (const t of rawTopics) {
+            for (const p of t.patterns) {
+              if (p.slug === paramPattern || p.id === paramPattern) {
+                element = document.getElementById(`pattern-${p.slug}`) || document.getElementById(`pattern-${p.id}`);
+                break;
+              }
+            }
+            if (element) break;
+          }
+        }
+      }
+
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background", "shadow-lg");
+        setTimeout(() => {
+          element?.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background", "shadow-lg");
+        }, 3500);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, rawTopics, searchParams]);
 
   // Toggle problem solved checkmark and persist per-user in database
   const toggleSolved = async (probId: string) => {
@@ -562,11 +650,12 @@ export default function ProblemsPage() {
                               const isAllPatternSolved =
                                 pat.problems.length > 0 && patSolvedCount === pat.problems.length;
 
-                              return (
+                                  return (
                                 <div
                                   key={pat.id}
+                                  id={`pattern-${pat.slug}`}
                                   className={cn(
-                                    "rounded-xl border transition-all overflow-hidden",
+                                    "rounded-xl border transition-all overflow-hidden scroll-mt-24",
                                     isAllPatternSolved
                                       ? "border-emerald-500/30 bg-emerald-500/[0.02]"
                                       : "border-border/70 bg-card/60"
@@ -644,8 +733,9 @@ export default function ProblemsPage() {
                                           return (
                                             <div
                                               key={prob.id}
+                                              id={`problem-${prob.id}`}
                                               className={cn(
-                                                "p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
+                                                "p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-300 rounded-lg scroll-mt-24",
                                                 isSolved ? "bg-emerald-500/5" : "hover:bg-muted/30"
                                               )}
                                             >
@@ -724,8 +814,7 @@ export default function ProblemsPage() {
                                                   <ExternalLink className="h-3 w-3 opacity-70" />
                                                 </a>
                                               </div>
-                                            </div>
-                                          );
+                                            </div>                                          );
                                         })
                                       ) : (
                                         <div className="p-4 text-center text-xs text-muted-foreground">
@@ -757,6 +846,23 @@ export default function ProblemsPage() {
           </>
         )}
       </div>
+    </AuthGuard>
+  );
+}
+
+export default function ProblemsPage() {
+  return (
+    <AuthGuard>
+      <Suspense
+        fallback={
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading problems catalog...</p>
+          </div>
+        }
+      >
+        <ProblemsContent />
+      </Suspense>
     </AuthGuard>
   );
 }

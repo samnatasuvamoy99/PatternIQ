@@ -154,10 +154,12 @@ model Pattern {
 
   shortDescription String?
 
-  whatIsThis    String?
-  intuition     String?
-  coreIdea      String?
-  interviewRule String?
+  whatIsThis            String?
+  intuition             String?
+  identificationSignals String?
+  executionRecipe       String?
+  coreIdea              String?
+  interviewRule         String?
 
   difficulty Difficulty @default(EASY)
   importance Int        @default(1)
@@ -170,8 +172,9 @@ model Pattern {
   cppTemplate  String?
   javaTemplate String?
   jsTemplate   String?
+  pyTemplate   String?
 
-  status ContentStatus @default(DRAFT)
+  status ContentStatus @default(PUBLISHED)
 
   topicId String
   topic   Topic  @relation(fields: [topicId], references: [id])
