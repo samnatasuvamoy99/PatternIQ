@@ -344,16 +344,7 @@ erDiagram
 
 ---
 
-## 5. Local Setup & Running Guide
-
-### 5.1 Environment Configuration (`.env`)
-Create a `.env` file in the root directory:
-
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/patterniq_db?schema=public"
-JWT_SECRET="your-super-secret-jwt-key-patterniq-2026"
-JWT_EXPIRES_IN="7d"
-PORT=3000
+#
 NODE_ENV="development"
 ```
 
