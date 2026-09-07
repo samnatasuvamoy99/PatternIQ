@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -10,3 +11,4 @@ export const POST = apiHandler(async (_req: NextRequest) => {
   response.cookies.delete("refreshToken");
   return response;
 });
+

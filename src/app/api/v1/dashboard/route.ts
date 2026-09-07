@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { apiHandler, requireAuth } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
 import { getStudentDashboard } from "@/services/dashboard.service";
@@ -8,3 +9,4 @@ export const GET = apiHandler(async (_req, { auth }: { auth: AuthContext | null 
   const dashboard = await getStudentDashboard(userId);
   return ok(dashboard);
 });
+

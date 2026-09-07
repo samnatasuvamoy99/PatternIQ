@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { apiHandler, requireAuth } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
 import { getRevisionHistory } from "@/services/revision.service";
@@ -8,3 +9,4 @@ export const GET = apiHandler(async (_req, { auth }: { auth: AuthContext | null 
   const items = await getRevisionHistory(userId);
   return ok(items);
 });
+

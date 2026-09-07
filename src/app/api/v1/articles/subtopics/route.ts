@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -9,3 +10,4 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const subtopics = await getArticleSubtopics(category);
   return ok(subtopics);
 });
+

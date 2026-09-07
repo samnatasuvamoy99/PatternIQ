@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, getPaginationParams, buildPaginationMeta } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -12,3 +13,4 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const { items, total } = await listPublicPatterns({ topicSlug, difficulty, page, limit, skip });
   return ok({ items, pagination: buildPaginationMeta(page, limit, total) });
 });
+

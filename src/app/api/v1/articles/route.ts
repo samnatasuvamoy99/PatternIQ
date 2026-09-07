@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, requireAuth, parseJson, getPaginationParams, buildPaginationMeta } from "@/lib/handler";
 import { ok, created } from "@/lib/api-response";
@@ -22,3 +23,4 @@ export const POST = apiHandler(async (req: NextRequest, { auth }: { auth: AuthCo
   const article = await createArticle(userId, body);
   return created(article, "Article draft created");
 });
+

@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, parseJson } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -12,3 +13,4 @@ export const POST = apiHandler(async (req: NextRequest) => {
   const result = await refreshAccessToken(refreshToken);
   return ok(result, "Token refreshed");
 });
+

@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, requireAuth, parseJson } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -11,3 +12,4 @@ export const PATCH = apiHandler(async (req: NextRequest, { auth }: { auth: AuthC
   const user = await updateProfile(userId, body);
   return ok(user, "Profile updated");
 });
+

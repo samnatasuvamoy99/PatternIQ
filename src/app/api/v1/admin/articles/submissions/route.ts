@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { apiHandler, requireAdmin } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
 import { adminGetPendingArticles } from "@/services/article.service";
@@ -7,3 +8,4 @@ export const GET = apiHandler(async (_req, { auth }: { auth: AuthContext | null 
   requireAdmin(auth);
   return ok(await adminGetPendingArticles());
 });
+

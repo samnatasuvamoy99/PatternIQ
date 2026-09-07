@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, parseJson, requireAdmin } from "@/lib/handler";
 import { created, ok } from "@/lib/api-response";
@@ -18,3 +19,4 @@ export const POST = apiHandler(async (req: NextRequest, { auth }: { auth: AuthCo
   const article = await adminCreateArticle(auth!.userId, body);
   return created(article, "Article created successfully");
 });
+

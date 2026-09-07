@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { apiHandler } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
@@ -22,3 +23,4 @@ export const GET = apiHandler(async () => {
 
   return ok(topics);
 });
+
