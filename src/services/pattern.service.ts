@@ -19,7 +19,7 @@ export async function listPublicPatterns(params: {
 
   const [items, total] = await Promise.all([
     prisma.pattern.findMany({
-      where, select: patternListSelect, orderBy: [{ topicId: "asc" }, { order: "asc" }],
+      where, select: patternListSelect, orderBy: [{ topicId: "asc" }, { number: "asc" }, { order: "asc" }],
       skip: params.skip, take: params.limit,
     }),
     prisma.pattern.count({ where }),
@@ -68,7 +68,7 @@ interface PatternInput {
 
 export async function adminListPatterns() {
   return prisma.pattern.findMany({
-    orderBy: [{ topicId: "asc" }, { order: "asc" }],
+    orderBy: [{ topicId: "asc" }, { number: "asc" }, { order: "asc" }],
     include: {
       topic: { select: { id: true, name: true, slug: true } },
       problems: { include: { problem: true } },

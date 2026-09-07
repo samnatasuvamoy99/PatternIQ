@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormattedText } from "@/components/ui/formatted-text";
-import { cn } from "@/lib/utils";
+import { cn, cleanLatexMath } from "@/lib/utils";
 
 interface FormattedTextareaProps {
   label?: string;
@@ -243,14 +243,28 @@ export function FormattedTextarea({
     }
   };
 
+  const handleCleanMath = () => {
+    if (!value.trim()) return;
+    const cleaned = cleanLatexMath(value);
+    if (cleaned !== value) {
+      onChange(cleaned);
+      showToast("applied");
+    }
+  };
+
   // ── Smart Paste handler ─────────────────────────────────────────────────
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pasted = e.clipboardData.getData("text");
+    let pasted = e.clipboardData.getData("text");
     if (!pasted) return;
 
-    if (detectHasAutoFormattable(pasted)) {
+    const hasLatex = /[\$\\]/.test(pasted);
+    if (hasLatex) {
+      pasted = cleanLatexMath(pasted);
+    }
+
+    if (hasLatex || detectHasAutoFormattable(pasted)) {
       e.preventDefault();
-      const formatted = autoFormatText(pasted);
+      const formatted = detectHasAutoFormattable(pasted) ? autoFormatText(pasted) : pasted;
       const textarea = textareaRef.current;
       if (!textarea) return;
 
@@ -464,6 +478,16 @@ export function FormattedTextarea({
             >
               <Wand2 className="h-3.5 w-3.5" />
               <span>⚡ Smart Format</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCleanMath}
+              title="Strip LaTeX dollar math notation ($x^N$ -> x^N)"
+              className="p-1 px-2 rounded font-semibold transition-all flex items-center gap-1 text-[11px] border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 shadow-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Clean Math ($)</span>
             </button>
           </div>
 

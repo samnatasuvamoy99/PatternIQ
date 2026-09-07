@@ -156,7 +156,9 @@ function PatternsContent() {
 
   // Group patterns under topics and apply search/difficulty filters
   const topicSections = topics.map((topic) => {
-    const topicPats = patterns.filter((p) => p.topicSlug === topic.slug);
+    const topicPats = patterns
+      .filter((p) => p.topicSlug === topic.slug)
+      .sort((a, b) => a.number - b.number);
 
     const filtered = topicPats.filter((pat) => {
       const matchesSearch =

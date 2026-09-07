@@ -43,7 +43,7 @@ import {
   PenSquare,
   Eye,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, cleanLatexMath } from "@/lib/utils";
 
 const TOPIC_ICON_OPTIONS = [
   { name: "Target (Pointers / Search)", icon: Target, value: "Target" },
@@ -223,21 +223,11 @@ export default function AdminPage() {
   const [newPatternInterviewRule, setNewPatternInterviewRule] = useState("");
   const [newPatternTime, setNewPatternTime] = useState("O(N)");
   const [newPatternSpace, setNewPatternSpace] = useState("O(1)");
-  const [newPatternPseudocode, setNewPatternPseudocode] = useState(
-    `function solve(arr):\n    left = 0, right = arr.length - 1\n    while left < right:\n        if condition:\n            return [left, right]\n        else:\n            left++\n    return [-1, -1]`
-  );
-  const [newPatternPy, setNewPatternPy] = useState(
-    `def solve(nums: list[int]) -> list[int]:\n    left, right = 0, len(nums) - 1\n    while left < right:\n        if nums[left] + nums[right] == target:\n            return [left, right]\n        left += 1\n    return []`
-  );
-  const [newPatternCpp, setNewPatternCpp] = useState(
-    `vector<int> solve(vector<int>& nums) {\n    int left = 0, right = nums.size() - 1;\n    while (left < right) {\n        // implementation\n    }\n    return {};\n}`
-  );
-  const [newPatternJava, setNewPatternJava] = useState(
-    `public int[] solve(int[] nums) {\n    int left = 0, right = nums.length - 1;\n    while (left < right) {\n        // implementation\n    }\n    return new int[]{};\n}`
-  );
-  const [newPatternJs, setNewPatternJs] = useState(
-    `function solve(nums) {\n    let left = 0, right = nums.length - 1;\n    while (left < right) {\n        // implementation\n    }\n    return [];\n}`
-  );
+  const [newPatternPseudocode, setNewPatternPseudocode] = useState("");
+  const [newPatternPy, setNewPatternPy] = useState("");
+  const [newPatternCpp, setNewPatternCpp] = useState("");
+  const [newPatternJava, setNewPatternJava] = useState("");
+  const [newPatternJs, setNewPatternJs] = useState("");
   const [newPatternSignals, setNewPatternSignals] = useState("");
   const [newPatternRecipe, setNewPatternRecipe] = useState("");
   const [newPatternSelectedProblems, setNewPatternSelectedProblems] = useState<string[]>([]);
@@ -473,23 +463,23 @@ export default function AdminPage() {
         body: JSON.stringify({
           topicId: newPatternTopicId,
           number: Number(newPatternNumber),
-          name: newPatternName.trim(),
-          shortDescription: newPatternShortDesc.trim() || undefined,
-          whatIsThis: newPatternWhatIsThis.trim() || undefined,
-          intuition: newPatternIntuition.trim() || undefined,
-          identificationSignals: newPatternSignals.trim() || undefined,
-          executionRecipe: newPatternRecipe.trim() || undefined,
-          coreIdea: newPatternCoreIdea.trim() || undefined,
-          interviewRule: newPatternInterviewRule.trim() || undefined,
+          name: cleanLatexMath(newPatternName.trim()),
+          shortDescription: newPatternShortDesc.trim() ? cleanLatexMath(newPatternShortDesc.trim()) : undefined,
+          whatIsThis: newPatternWhatIsThis.trim() ? cleanLatexMath(newPatternWhatIsThis.trim()) : undefined,
+          intuition: newPatternIntuition.trim() ? cleanLatexMath(newPatternIntuition.trim()) : undefined,
+          identificationSignals: newPatternSignals.trim() ? cleanLatexMath(newPatternSignals.trim()) : undefined,
+          executionRecipe: newPatternRecipe.trim() ? cleanLatexMath(newPatternRecipe.trim()) : undefined,
+          coreIdea: newPatternCoreIdea.trim() ? cleanLatexMath(newPatternCoreIdea.trim()) : undefined,
+          interviewRule: newPatternInterviewRule.trim() ? cleanLatexMath(newPatternInterviewRule.trim()) : undefined,
           difficulty: newPatternDifficulty,
           importance: Number(newPatternImportance),
-          timeComplexity: newPatternTime,
-          spaceComplexity: newPatternSpace,
-          pseudocode: newPatternPseudocode.trim() || undefined,
-          cppTemplate: newPatternCpp.trim() || undefined,
-          javaTemplate: newPatternJava.trim() || undefined,
-          jsTemplate: newPatternJs.trim() || undefined,
-          pyTemplate: newPatternPy.trim() || undefined,
+          timeComplexity: cleanLatexMath(newPatternTime),
+          spaceComplexity: cleanLatexMath(newPatternSpace),
+          pseudocode: newPatternPseudocode.trim() ? cleanLatexMath(newPatternPseudocode.trim()) : undefined,
+          cppTemplate: newPatternCpp.trim() ? cleanLatexMath(newPatternCpp.trim()) : undefined,
+          javaTemplate: newPatternJava.trim() ? cleanLatexMath(newPatternJava.trim()) : undefined,
+          jsTemplate: newPatternJs.trim() ? cleanLatexMath(newPatternJs.trim()) : undefined,
+          pyTemplate: newPatternPy.trim() ? cleanLatexMath(newPatternPy.trim()) : undefined,
           status: "PUBLISHED",
           benchmarkProblemIds: newPatternSelectedProblems,
         }),
@@ -501,11 +491,17 @@ export default function AdminPage() {
         showSuccess(`Pattern "${newPatternName}" successfully created and published!`);
         setNewPatternName("");
         setNewPatternShortDesc("");
+        setNewPatternWhatIsThis("");
         setNewPatternIntuition("");
         setNewPatternSignals("");
         setNewPatternRecipe("");
         setNewPatternCoreIdea("");
         setNewPatternInterviewRule("");
+        setNewPatternPseudocode("");
+        setNewPatternPy("");
+        setNewPatternCpp("");
+        setNewPatternJava("");
+        setNewPatternJs("");
         setNewPatternSelectedProblems([]);
         setNewPatternNumber((n) => Number(n) + 1);
         loadAllAdminData();
@@ -533,23 +529,23 @@ export default function AdminPage() {
         body: JSON.stringify({
           topicId: editingPattern.topicId,
           number: Number(editingPattern.number),
-          name: editingPattern.name.trim(),
-          shortDescription: editingPattern.shortDescription?.trim() || undefined,
-          whatIsThis: editingPattern.whatIsThis?.trim() || undefined,
-          intuition: editingPattern.intuition?.trim() || undefined,
-          identificationSignals: editingPattern.identificationSignals?.trim() || undefined,
-          executionRecipe: editingPattern.executionRecipe?.trim() || undefined,
-          coreIdea: editingPattern.coreIdea?.trim() || undefined,
-          interviewRule: editingPattern.interviewRule?.trim() || undefined,
+          name: cleanLatexMath(editingPattern.name.trim()),
+          shortDescription: editingPattern.shortDescription?.trim() ? cleanLatexMath(editingPattern.shortDescription.trim()) : undefined,
+          whatIsThis: editingPattern.whatIsThis?.trim() ? cleanLatexMath(editingPattern.whatIsThis.trim()) : undefined,
+          intuition: editingPattern.intuition?.trim() ? cleanLatexMath(editingPattern.intuition.trim()) : undefined,
+          identificationSignals: editingPattern.identificationSignals?.trim() ? cleanLatexMath(editingPattern.identificationSignals.trim()) : undefined,
+          executionRecipe: editingPattern.executionRecipe?.trim() ? cleanLatexMath(editingPattern.executionRecipe.trim()) : undefined,
+          coreIdea: editingPattern.coreIdea?.trim() ? cleanLatexMath(editingPattern.coreIdea.trim()) : undefined,
+          interviewRule: editingPattern.interviewRule?.trim() ? cleanLatexMath(editingPattern.interviewRule.trim()) : undefined,
           difficulty: editingPattern.difficulty,
           importance: Number(editingPattern.importance),
-          timeComplexity: editingPattern.timeComplexity || undefined,
-          spaceComplexity: editingPattern.spaceComplexity || undefined,
-          pseudocode: editingPattern.pseudocode?.trim() || undefined,
-          cppTemplate: editingPattern.cppTemplate?.trim() || undefined,
-          javaTemplate: editingPattern.javaTemplate?.trim() || undefined,
-          jsTemplate: editingPattern.jsTemplate?.trim() || undefined,
-          pyTemplate: editingPattern.pyTemplate?.trim() || undefined,
+          timeComplexity: editingPattern.timeComplexity ? cleanLatexMath(editingPattern.timeComplexity) : undefined,
+          spaceComplexity: editingPattern.spaceComplexity ? cleanLatexMath(editingPattern.spaceComplexity) : undefined,
+          pseudocode: editingPattern.pseudocode?.trim() ? cleanLatexMath(editingPattern.pseudocode.trim()) : undefined,
+          cppTemplate: editingPattern.cppTemplate?.trim() ? cleanLatexMath(editingPattern.cppTemplate.trim()) : undefined,
+          javaTemplate: editingPattern.javaTemplate?.trim() ? cleanLatexMath(editingPattern.javaTemplate.trim()) : undefined,
+          jsTemplate: editingPattern.jsTemplate?.trim() ? cleanLatexMath(editingPattern.jsTemplate.trim()) : undefined,
+          pyTemplate: editingPattern.pyTemplate?.trim() ? cleanLatexMath(editingPattern.pyTemplate.trim()) : undefined,
           benchmarkProblemIds: editingPatternSelectedProblems,
         }),
       });

@@ -16,7 +16,7 @@ export async function getTopicBySlug(slug: string) {
     include: {
       patterns: {
         where: { status: "PUBLISHED" },
-        orderBy: { order: "asc" },
+        orderBy: [{ number: "asc" }, { order: "asc" }],
         select: {
           id: true, slug: true, name: true, number: true,
           difficulty: true, importance: true, shortDescription: true,
