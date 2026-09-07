@@ -80,17 +80,53 @@ export function FormattedText({ content, className }: FormattedTextProps) {
     });
   };
 
+  // Shared helper to render step card content parts split by '|' and '==>'
+  const renderStepParts = (stepContent: string, keyPrefix: string) => {
+    const parts = stepContent.split("|").map((p) => p.trim());
+    return (
+      <div className="flex-1 flex flex-wrap items-center gap-2 text-xs font-mono">
+        {parts.map((part, pIdx) => {
+          const subParts = part.split(/==>|->|=>/).map((s) => s.trim());
+          return (
+            <React.Fragment key={`${keyPrefix}-p${pIdx}`}>
+              {pIdx > 0 && <span className="text-muted-foreground/40 font-sans hidden sm:inline">|</span>}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {subParts.map((sub, sIdx) => {
+                  const isExtract = sub.toLowerCase().startsWith("extract") || sub.toLowerCase().startsWith("pair");
+                  const isRemaining = sub.toLowerCase().startsWith("remaining") || sub.toLowerCase().includes("stop");
+
+                  return (
+                    <React.Fragment key={`${keyPrefix}-p${pIdx}-s${sIdx}`}>
+                      {sIdx > 0 && <ArrowRight className="h-3 w-3 text-primary/70 shrink-0" />}
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[11px] font-mono transition-colors",
+                          isExtract && "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold",
+                          isRemaining && "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold",
+                          !isExtract && !isRemaining && "bg-muted/60 text-foreground border border-border/60"
+                        )}
+                      >
+                        {parseInline(sub)}
+                      </span>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Helper to parse dry-run step lines like: "Step 1: 1234 % 10 ==> Extract 4 | 1234 / 10 ==> Remaining: 123"
   const renderStepRow = (line: string, index: number) => {
-    // Check if line matches Step pattern
+    // Check if line matches named Step pattern (Step 1:, Phase 2:, etc.)
     const stepMatch = line.match(/^(Step\s+\d+|Phase\s+\d+|Pass\s+\d+|Iteration\s+\d+):\s*(.*)/i);
 
     if (stepMatch) {
       const stepLabel = stepMatch[1];
       const stepContent = stepMatch[2];
-
-      // Split content by pipe '|' or '==>'
-      const parts = stepContent.split("|").map((p) => p.trim());
 
       return (
         <div
@@ -103,39 +139,59 @@ export function FormattedText({ content, className }: FormattedTextProps) {
                 {stepLabel}
               </span>
             </div>
+            {renderStepParts(stepContent, `step-${index}`)}
+          </div>
+        </div>
+      );
+    }
 
-            <div className="flex-1 flex flex-wrap items-center gap-2 text-xs font-mono">
-              {parts.map((part, pIdx) => {
-                const subParts = part.split(/==>|->|=>/).map((s) => s.trim());
-                return (
-                  <React.Fragment key={pIdx}>
-                    {pIdx > 0 && <span className="text-muted-foreground/40 font-sans hidden sm:inline">|</span>}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {subParts.map((sub, sIdx) => {
-                        const isExtract = sub.toLowerCase().startsWith("extract");
-                        const isRemaining = sub.toLowerCase().startsWith("remaining") || sub.toLowerCase().includes("stop");
+    // Check for inline arrow trace lines like: "i = 1 ==> Pair: (1, 36)" or "n = 5 -> result: 10"
+    // These are variable-trace dry-run lines containing ==> or -> operators
+    const arrowMatch = line.match(/^(.+?)(==>|->|=>)(.*)$/);
+    if (arrowMatch) {
+      const leftSide = arrowMatch[1].trim();
+      const rightSide = arrowMatch[3].trim();
+      const fullContent = line.trim();
 
-                        return (
-                          <React.Fragment key={sIdx}>
-                            {sIdx > 0 && <ArrowRight className="h-3 w-3 text-primary/70 shrink-0" />}
-                            <span
-                              className={cn(
-                                "px-2 py-1 rounded-md text-[11px] font-mono transition-colors",
-                                isExtract && "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold",
-                                isRemaining && "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold",
-                                !isExtract && !isRemaining && "bg-muted/60 text-foreground border border-border/60"
-                              )}
-                            >
-                              {parseInline(sub)}
-                            </span>
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
+      // Reconstruct as a single trace row with left=label, right=value
+      // Split right side by | for multiple outputs
+      const rightParts = rightSide.split("|").map((p) => p.trim());
+      const isStopLine = fullContent.toLowerCase().includes("stop");
+
+      return (
+        <div
+          key={`trace-${index}`}
+          className="group relative my-1.5 rounded-lg border border-border/60 bg-gradient-to-r from-muted/30 via-card to-primary/5 px-3 py-2 shadow-xs transition-all hover:border-primary/30 hover:shadow-sm"
+        >
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+            {/* Left side: variable assignment */}
+            <span className={cn(
+              "px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold border",
+              isStopLine
+                ? "bg-red-500/15 text-red-300 border-red-500/30"
+                : "bg-muted/60 text-foreground border-border/60"
+            )}>
+              {leftSide}
+            </span>
+            <ArrowRight className="h-3 w-3 text-primary/60 shrink-0" />
+            {/* Right side: result parts */}
+            {rightParts.map((rPart, rIdx) => {
+              const isPair = rPart.toLowerCase().startsWith("pair");
+              const isStop = rPart.toLowerCase().includes("stop");
+              return (
+                <React.Fragment key={`trace-${index}-r${rIdx}`}>
+                  {rIdx > 0 && <span className="text-muted-foreground/40">|</span>}
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-md text-[11px] font-mono border",
+                    isPair && "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-bold",
+                    isStop && !isPair && "bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold",
+                    !isPair && !isStop && "bg-primary/10 text-primary border-primary/25 font-semibold"
+                  )}>
+                    {rPart}
+                  </span>
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
       );
@@ -165,8 +221,15 @@ export function FormattedText({ content, className }: FormattedTextProps) {
 
     // Check for key-value headers like "Initial Number: 1234"
     // Only match SHORT keys (1-4 words, letters/digits/spaces only) before the colon
+    // Exclude lines containing arrow operators (they were handled above as trace lines)
     const kvMatch = line.match(/^([A-Za-z0-9][A-Za-z0-9 ]{0,30}):\s*(\S.*)$/);
-    if (kvMatch && !line.startsWith("http") && kvMatch[1].trim().split(/\s+/).length <= 4) {
+    if (
+      kvMatch &&
+      !line.startsWith("http") &&
+      !line.includes("==>") &&
+      !line.includes("->") &&
+      kvMatch[1].trim().split(/\s+/).length <= 4
+    ) {
       const key = kvMatch[1].trim();
       const val = kvMatch[2].trim();
 
