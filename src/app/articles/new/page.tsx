@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { ArrowLeft, Send, Eye, PenSquare, Loader2 } from "lucide-react";
+import { FormattedTextarea } from "@/components/ui/formatted-textarea";
+import { FormattedText } from "@/components/ui/formatted-text";
 import { apiClient } from "@/lib/api-client";
 
 const CATEGORIES = ["DSA", "SYSTEM_DESIGN", "DEVELOPMENT", "CORE_CS", "DATABASE", "GENAI"];
@@ -119,8 +121,12 @@ export default function NewArticlePage() {
               {excerpt}
             </p>
           )}
-          <div className="whitespace-pre-line text-sm leading-relaxed text-foreground/90 pt-4 border-t border-border">
-            {content || "No content written yet."}
+          <div className="pt-4 border-t border-border">
+            {content ? (
+              <FormattedText content={content} />
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No content written yet.</p>
+            )}
           </div>
         </Card>
       ) : (
@@ -146,7 +152,7 @@ export default function NewArticlePage() {
                     variant={category === cat ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCategory(cat)}
-                    className="text-xs"
+                    className="text-xs cursor-pointer"
                   >
                     {cat.replace("_", " ")}
                   </Button>
@@ -165,14 +171,14 @@ export default function NewArticlePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-foreground">Article Content (Markdown supported)</label>
-              <Textarea
-                placeholder="Write your technical article, pseudocode explanations, and code examples..."
-                required
-                rows={12}
+              <FormattedTextarea
+                label="Article Content (Auto Detect, Smart Format & Pictures/Diagrams Supported)"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="font-mono text-xs leading-relaxed"
+                onChange={setContent}
+                rows={12}
+                placeholder="Write your technical article, pseudocode explanations, step cards, pictures, and diagrams..."
+                required
+                category={category}
               />
             </div>
 
@@ -180,7 +186,7 @@ export default function NewArticlePage() {
               <span className="text-xs text-muted-foreground">
                 Submitted articles are reviewed before appearing publicly.
               </span>
-              <Button type="submit" disabled={isSubmitting} className="gap-2 text-xs">
+              <Button type="submit" disabled={isSubmitting} className="gap-2 text-xs cursor-pointer">
                 {isSubmitting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (

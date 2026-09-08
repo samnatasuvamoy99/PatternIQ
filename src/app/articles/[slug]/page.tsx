@@ -19,6 +19,7 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
+import { FormattedText } from "@/components/ui/formatted-text";
 
 interface CommentItem {
   id: string;
@@ -57,71 +58,9 @@ interface ArticleDetail {
 function ArticleContentRenderer({ content }: { content: string }) {
   if (!content) return null;
 
-  const parts = content.split(/(```[\s\S]*?```)/g);
-
   return (
     <div className="space-y-4 text-foreground/90 leading-relaxed text-sm sm:text-base">
-      {parts.map((part, idx) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
-          const firstLineEnd = part.indexOf("\n");
-          let language = "code";
-          let code = "";
-          if (firstLineEnd !== -1) {
-            language = part.slice(3, firstLineEnd).trim() || "code";
-            code = part.slice(firstLineEnd + 1, -3);
-          } else {
-            code = part.slice(3, -3);
-          }
-          return (
-            <div key={idx} className="my-4">
-              <CodeViewer code={code.trim()} language={language} title={`${language} snippet`} />
-            </div>
-          );
-        }
-
-        const lines = part.split("\n");
-        return (
-          <div key={idx} className="space-y-2.5">
-            {lines.map((line, lineIdx) => {
-              const trimmed = line.trim();
-              if (!trimmed) return null;
-              if (trimmed.startsWith("### ")) {
-                return (
-                  <h3 key={lineIdx} className="text-base sm:text-lg font-bold text-foreground mt-4 mb-1">
-                    {trimmed.slice(4)}
-                  </h3>
-                );
-              }
-              if (trimmed.startsWith("## ")) {
-                return (
-                  <h2 key={lineIdx} className="text-lg sm:text-xl font-extrabold text-foreground mt-6 mb-2 border-b border-border/40 pb-1.5">
-                    {trimmed.slice(3)}
-                  </h2>
-                );
-              }
-              if (trimmed.startsWith("# ")) {
-                return (
-                  <h1 key={lineIdx} className="text-xl sm:text-2xl font-black text-foreground mt-6 mb-2">
-                    {trimmed.slice(2)}
-                  </h1>
-                );
-              }
-              if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                return (
-                  <li key={lineIdx} className="ml-4 list-disc text-muted-foreground pl-1">
-                    <span className="text-foreground">{trimmed.slice(2)}</span>
-                  </li>
-                );
-              }
-              return (
-                <p key={lineIdx} className="text-muted-foreground leading-relaxed">
-                  {line}
-                </p>
-              );
-            })}
-          </div>
-        );
-      })}
+      <FormattedText content={content} />
     </div>
   );
 }

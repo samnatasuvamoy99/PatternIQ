@@ -233,6 +233,97 @@ sequenceDiagram
 
 ---
 
+### 3.8 Database Entity Relationship Diagram (ERD)
+```mermaid
+erDiagram
+    User ||--o{ UserPatternProgress : tracks
+    User ||--o{ UserProblemProgress : tracks
+    User ||--o{ Note : creates
+    User ||--o{ Revision : scheduled_for
+    User ||--o{ Article : authors
+    User ||--o{ ArticleComment : posts
+
+    Topic ||--|{ Pattern : contains
+    Pattern ||--|{ PatternProblem : links
+    Problem ||--|{ PatternProblem : linked_by
+    Pattern ||--o{ UserPatternProgress : tracked_in
+    Problem ||--o{ UserProblemProgress : tracked_in
+    Pattern ||--o{ Revision : revised_in
+
+    Article ||--o{ ArticleComment : receives
+    Article ||--o{ ArticleLike : receives
+    Article ||--o{ ArticleBookmark : receives
+
+    User {
+        string id PK
+        string email UK
+        string passwordHash
+        Role role "STUDENT | ADMIN"
+        string name
+        boolean isActive
+    }
+
+    Topic {
+        string id PK
+        string name UK
+        string slug UK
+        int order
+    }
+
+    Pattern {
+        string id PK
+        int number
+        string name
+        string slug UK
+        string intuition
+        string executionRecipe
+        string pseudocode
+        Difficulty difficulty "EASY | MEDIUM | HARD"
+        string topicId FK
+    }
+
+    Problem {
+        string id PK
+        string title
+        string slug UK
+        string platform "LeetCode | HackerRank | Codeforces"
+        string solveUrl
+        Difficulty difficulty "EASY | MEDIUM | HARD"
+    }
+
+    PatternProblem {
+        string id PK
+        string patternId FK
+        string problemId FK
+        int order
+        boolean isCore
+    }
+
+    UserProblemProgress {
+        string id PK
+        string userId FK
+        string problemId FK
+        ProblemStatus status "NOT_ATTEMPTED | ATTEMPTED | SOLVED"
+        datetime solvedAt
+    }
+
+    UserPatternProgress {
+        string id PK
+        string userId FK
+        string patternId FK
+        PatternStatus status "NOT_STARTED | IN_PROGRESS | COMPLETED | MASTERED"
+        datetime lastRevisedAt
+        datetime nextRevisionAt
+    }
+
+    Revision {
+        string id PK
+        string userId FK
+        string patternId FK
+        datetime scheduledAt
+        RevisionStatus status "PENDING | COMPLETED | SKIPPED"
+    }
+```
 
 ---
 
@@ -251,5 +342,24 @@ sequenceDiagram
 | **Authentication** | **JWT (jsonwebtoken) + bcryptjs** | HttpOnly Session Cookies, Bearer Tokens, Password Hashing |
 | **Execution Tooling** | **tsx** | TypeScript Execution for Database Seeding & Cleanups |
 
----
+```
+
+### 5.2 Commands
+
+```bash
+# 1. Install project dependencies
+npm install
+
+# 2. Generate Prisma Client
+npm run prisma:generate
+
+# 3. Run Database Migrations
+npm run prisma:migrate
+
+# 4. Seed Database with Initial Topics, Patterns & Problems
+npm run prisma:seed
+
+# 5. Start Development Server
+npm run dev
+```
 

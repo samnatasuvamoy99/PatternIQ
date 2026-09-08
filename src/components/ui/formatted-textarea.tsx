@@ -15,6 +15,11 @@ import {
   Wand2,
   CheckCheck,
   X,
+  Image as ImageIcon,
+  Workflow,
+  Table as TableIcon,
+  Bot,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormattedText } from "@/components/ui/formatted-text";
@@ -29,27 +34,87 @@ interface FormattedTextareaProps {
   className?: string;
   id?: string;
   required?: boolean;
+  category?: string;
 }
 
 // ─── Smart Format Engine ────────────────────────────────────────────────────
-// Detects patterns in raw pasted text and auto-converts to the Step Card format
-// that FormattedText renders into the beautiful UI cards.
+// Detects patterns in raw pasted or typed text (including column-wise tables,
+// step traces, and inline headers) and auto-converts to clean Markdown structures.
 
 function detectHasAutoFormattable(text: string): boolean {
+  if (!text) return false;
+  // Has inline steps pasted inside text
+  const hasInlineSteps = /([.!?])\s+((?:Step|Phase|Pass|Iteration)\s+\d+\s*:)/i.test(text);
+  
+  // Has tabular column data (lines with tabs or multiple consecutive spaces)
+  const hasTabularData = text.split("\n").some((l) => l.includes("\t") || /\s{3,}/.test(l.trim()));
+  
   const lines = text.split("\n").filter((l) => l.trim());
-  // Has arrow-trace lines not yet prefixed with Step N:
   const hasArrowLines = lines.some(
     (l) =>
       /==>|->/.test(l) &&
       !/^(Step\s+\d+|Phase\s+\d+|Pass\s+\d+|Iteration\s+\d+)\s*:/i.test(l.trim())
   );
-  // Has numbered list items (1. text or 1) text)
   const hasNumberedList = lines.some((l) => /^\d+[.)]\s+\S/.test(l.trim()));
-  return hasArrowLines || hasNumberedList;
+  
+  return hasInlineSteps || hasTabularData || hasArrowLines || hasNumberedList;
 }
 
 function autoFormatText(text: string): string {
-  const lines = text.split("\n");
+  if (!text) return text;
+  
+  // First step: Fix concatenated column headers & inline step markers
+  let formatted = text
+    .replace(/Data StructureThink of it like/gi, "Data Structure | Think of it like")
+    .replace(/Think of it like\.\.\.Best used for/gi, "Think of it like... | Best used for")
+    .replace(/Arrays & StringsA row of/gi, "Arrays & Strings | A row of")
+    .replace(/lockersStoring ordered/gi, "lockers | Storing ordered")
+    .replace(/Hash Tables \/ MapsA dictionary/gi, "Hash Tables / Maps | A dictionary")
+    .replace(/\)Instant lookups/gi, ") | Instant lookups")
+    .replace(/Linked ListsA treasure/gi, "Linked Lists | A treasure")
+    .replace(/locationFrequent insertions/gi, "location | Frequent insertions")
+    .replace(/StacksA stack of/gi, "Stacks | A stack of")
+    .replace(/traysLast-In/gi, "trays | Last-In")
+    .replace(/QueuesA line at/gi, "Queues | A line at")
+    .replace(/shopFirst-In/gi, "shop | First-In")
+    .replace(/([.!?])\s+((?:Step|Phase|Pass|Iteration)\s+\d+\s*:)/gi, "$1\n\n$2")
+    .replace(/([.!?])\s+(#{1,4}\s+)/g, "$1\n\n$2");
+
+  const lines = formatted.split("\n");
+
+  // Check if pasted text contains column-wise tabular rows (with | or tabs)
+  const isTabularBlock = lines.filter((l) => l.trim()).some((l) => l.includes("|") || l.includes("\t"));
+  if (isTabularBlock && !text.includes("```")) {
+    const tableRows: string[] = [];
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      let parts: string[] = [];
+      if (trimmed.includes("|")) {
+        parts = trimmed.split("|").map((p) => p.trim()).filter(Boolean);
+      } else if (trimmed.includes("\t")) {
+        parts = trimmed.split("\t").map((p) => p.trim()).filter(Boolean);
+      } else {
+        parts = trimmed.split(/\s{3,}/).map((p) => p.trim()).filter(Boolean);
+      }
+
+      if (parts.length >= 2) {
+        tableRows.push(`| ${parts.join(" | ")} |`);
+        if (idx === 0) {
+          const sep = parts.map(() => "---").join(" | ");
+          tableRows.push(`| ${sep} |`);
+        }
+      } else {
+        tableRows.push(line);
+      }
+    });
+
+    if (tableRows.length > 2 && tableRows.some((r) => r.startsWith("|"))) {
+      return tableRows.join("\n");
+    }
+  }
+
   let stepCounter = 1;
   const result: string[] = [];
 
@@ -58,50 +123,27 @@ function autoFormatText(text: string): string {
     const trimmed = line.trim();
 
     if (!trimmed) {
-      // Blank line between blocks resets step counter
       stepCounter = 1;
       result.push(line);
       continue;
     }
 
-    // Already a Step N: / Phase N: / Pass N: / Iteration N: line → keep as-is
-    if (
-      /^(Step\s+\d+|Phase\s+\d+|Pass\s+\d+|Iteration\s+\d+)\s*:/i.test(trimmed)
-    ) {
+    if (/^(Step\s+\d+|Phase\s+\d+|Pass\s+\d+|Iteration\s+\d+)\s*:/i.test(trimmed)) {
       result.push(line);
       const numMatch = trimmed.match(/\d+/);
       if (numMatch) stepCounter = parseInt(numMatch[0]) + 1;
       continue;
     }
 
-    // Arrow trace line: "i = 1 ==> Pair: (1, 36)" or "n = 5 -> result: 10"
-    // Convert to "Step N: ..."
-    if (/==>|->/.test(trimmed) && !trimmed.startsWith(">")) {
+    if (/==>|->/.test(trimmed) && !trimmed.startsWith(">") && !trimmed.startsWith("```")) {
       result.push(`Step ${stepCounter++}: ${trimmed}`);
       continue;
     }
 
-    // Numbered list item "1. text" or "1) text" → "Step 1: text"
     const numListMatch = trimmed.match(/^(\d+)[.)]\s+(.*)/);
     if (numListMatch) {
       result.push(`Step ${numListMatch[1]}: ${numListMatch[2]}`);
       stepCounter = parseInt(numListMatch[1]) + 1;
-      continue;
-    }
-
-    // Plain long sentence that stands alone → wrap in italic markers
-    const prevEmpty = i === 0 || !lines[i - 1]?.trim();
-    const nextEmpty = i === lines.length - 1 || !lines[i + 1]?.trim();
-    const isLongSentence =
-      trimmed.length > 40 &&
-      !trimmed.startsWith("*") &&
-      !trimmed.startsWith("-") &&
-      !trimmed.startsWith(">") &&
-      !trimmed.startsWith("[") &&
-      !/^[A-Za-z0-9 ]{1,30}:\s+\S/.test(trimmed);
-
-    if (prevEmpty && nextEmpty && isLongSentence) {
-      result.push(`*${trimmed}*`);
       continue;
     }
 
@@ -111,20 +153,104 @@ function autoFormatText(text: string): string {
   return result.join("\n");
 }
 
+// ─── Preset Diagrams List ───────────────────────────────────────────────────
+
+const DIAGRAM_PRESETS = [
+  {
+    name: "Data Structure Quick Comparison Table",
+    type: "table",
+    code: `| Data Structure | Think of it like... | Best used for... |
+| --- | --- | --- |
+| Arrays & Strings | A row of numbered lockers | Storing ordered items with index access |
+| Hash Tables / Maps | A dictionary (Word -> Definition) | O(1) instant key-value lookups |
+| Linked Lists | Treasure hunt with clue cards | O(1) insertions/deletions without reshaping |
+| Stacks | Stack of cafeteria trays | Last-In, First-Out (LIFO) operations ("Undo") |
+| Queues | A line at a coffee shop | First-In, First-Out (FIFO) processing |`,
+  },
+  {
+    name: "Sliding Window Pointer Flowchart",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph LR
+Input Array [Array: 2, 1, 5, 1, 3, 2] --> Window [Expand Right Pointer]
+Window --> Check {Sum >= K?}
+Check -- Yes --> Shrink [Shrink Left Pointer & Update Min Length]
+Check -- No --> Slide [Advance Right Pointer]
+Shrink --> Window
+\`\`\``,
+  },
+  {
+    name: "Two Pointers Search Strategy",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph TD
+Left [Left Pointer at Start = 0] --> Sum {Evaluate Left + Right Sum}
+Right [Right Pointer at End = N-1] --> Sum
+Sum -- Sum == Target --> Result [Return Pair Index]
+Sum -- Sum < Target --> Increment [Increment Left++]
+Sum -- Sum > Target --> Decrement [Decrement Right--]
+Increment --> Sum
+Decrement --> Sum
+\`\`\``,
+  },
+  {
+    name: "Hash Table Bucket Lookup",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph LR
+Key [Search Key: 'apple'] --> HashFunc [Hash Function hashKey]
+HashFunc --> Index [Bucket Index: 4]
+Index --> Bucket [Linked Bucket Chain: ('apple' -> 100)]
+Bucket --> Value [Returned Value: 100]
+\`\`\``,
+  },
+  {
+    name: "Binary Tree Traversal Flow",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph TD
+Root [Root Node] --> LeftChild [Left Subtree]
+Root --> RightChild [Right Subtree]
+LeftChild --> L1 [Left Leaf]
+LeftChild --> R1 [Right Leaf]
+RightChild --> L2 [Left Leaf]
+RightChild --> R2 [Right Leaf]
+\`\`\``,
+  },
+  {
+    name: "System Design Microservices Architecture",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph TD
+Client [Web / Mobile Client] --> Gateway [API Gateway & Rate Limiter]
+Gateway --> Auth [Auth Service]
+Gateway --> Cache [(Redis Distributed Cache)]
+Gateway --> DB [(Primary Database)]
+\`\`\``,
+  },
+];
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function FormattedTextarea({
   label,
   value,
   onChange,
-  placeholder = "Type concept explanation here...",
-  rows = 4,
+  placeholder = "Type article content, algorithm explanation, pseudocode, or tables...",
+  rows = 8,
   className,
   id,
   required = false,
+  category,
 }: FormattedTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showImageUrlInput, setShowImageUrlInput] = useState(false);
+  const [showDiagramModal, setShowDiagramModal] = useState(false);
+  const [customDiagramDesc, setCustomDiagramDesc] = useState("");
+  const [isGeneratingDiagram, setIsGeneratingDiagram] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
   const [toast, setToast] = useState<"applied" | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -149,9 +275,9 @@ export function FormattedTextarea({
     } else {
       const defaultWord =
         prefix === "<b>" || prefix === "**"
-          ? "bold word"
+          ? "bold phrase"
           : prefix.includes("u>")
-          ? "underlined phrase"
+          ? "underlined concept"
           : "concept";
       replacement = `${prefix}${defaultWord}${suffix}`;
     }
@@ -193,7 +319,7 @@ export function FormattedTextarea({
         })
         .join("\n");
     } else {
-      replacement = "\n- Item 1\n- Item 2\n- Item 3\n";
+      replacement = "\n- Key algorithmic insight 1\n- Key algorithmic insight 2\n- Key algorithmic insight 3\n";
     }
 
     onChange(value.substring(0, start) + replacement + value.substring(end));
@@ -223,7 +349,7 @@ export function FormattedTextarea({
         .join("\n");
     } else {
       replacement =
-        "\n1. First step or point\n2. Second step or point\n3. Third step or point\n";
+        "\n1. Pick language & initialize workspace\n2. Define boundary conditions\n3. Execute optimal algorithm\n";
     }
 
     onChange(value.substring(0, start) + replacement + value.substring(end));
@@ -231,6 +357,97 @@ export function FormattedTextarea({
       textarea.focus();
       textarea.setSelectionRange(start, start + replacement.length);
     }, 10);
+  };
+
+  const insertTable = () => {
+    const textarea = textareaRef.current;
+    const tableMarkdown = `\n| Data Structure | Think of it like... | Best used for... |\n| --- | --- | --- |\n| Arrays & Strings | A row of numbered lockers | Storing ordered items with index access |\n| Hash Tables / Maps | A dictionary (Word -> Definition) | O(1) instant key-value lookups |\n| Linked Lists | Treasure hunt with clue cards | O(1) insertions/deletions without reshaping |\n| Stacks | Stack of cafeteria trays | Last-In, First-Out (LIFO) operations |\n| Queues | A line at a coffee shop | First-In, First-Out (FIFO) processing |\n`;
+
+    if (!textarea) {
+      onChange(value + tableMarkdown);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue = value.substring(0, start) + tableMarkdown + value.substring(end);
+    onChange(newValue);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + tableMarkdown.length, start + tableMarkdown.length);
+    }, 10);
+  };
+
+  const insertImage = (url: string, alt: string) => {
+    const textarea = textareaRef.current;
+    const targetUrl = url.trim() || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800";
+    const targetAlt = alt.trim() || "Technical Diagram / System Illustration";
+    const imgMarkdown = `\n![${targetAlt}](${targetUrl})\n`;
+
+    if (!textarea) {
+      onChange(value + imgMarkdown);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue = value.substring(0, start) + imgMarkdown + value.substring(end);
+    onChange(newValue);
+    setShowImageUrlInput(false);
+    setImageUrl("");
+    setImageAlt("");
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + imgMarkdown.length, start + imgMarkdown.length);
+    }, 10);
+  };
+
+  const insertPresetDiagram = (snippet: string) => {
+    const textarea = textareaRef.current;
+    const formattedSnippet = `\n${snippet}\n`;
+
+    if (!textarea) {
+      onChange(value + formattedSnippet);
+    } else {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue = value.substring(0, start) + formattedSnippet + value.substring(end);
+      onChange(newValue);
+    }
+
+    setShowDiagramModal(false);
+    showToast("applied");
+  };
+
+  const handleGenerateCustomDiagram = async () => {
+    if (!customDiagramDesc.trim()) return;
+    setIsGeneratingDiagram(true);
+
+    try {
+      const res = await fetch("/api/v1/gemini/diagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: customDiagramDesc.trim(),
+          category: category || "general",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.data) {
+        insertPresetDiagram(data.data);
+        setCustomDiagramDesc("");
+      } else {
+        alert(data.error?.message || "Failed to generate diagram");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while generating the diagram.");
+    } finally {
+      setIsGeneratingDiagram(false);
+    }
   };
 
   // ── Smart Format (toolbar button) ───────────────────────────────────────
@@ -307,7 +524,7 @@ export function FormattedTextarea({
             variant="ghost"
             size="sm"
             onClick={() => setShowPreview(!showPreview)}
-            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
           >
             {showPreview ? (
               <EyeOff className="h-3 w-3" />
@@ -329,18 +546,60 @@ export function FormattedTextarea({
         <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] font-semibold border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
           <CheckCheck className="h-3.5 w-3.5 shrink-0" />
           <span>
-            ✨ Smart Format applied — step traces &amp; patterns auto-converted to
-            visual Step Cards!
+            ✨ Smart Format applied — column tables, step traces &amp; headers auto-formatted!
           </span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="ml-auto text-emerald-400/60 hover:text-emerald-400"
+            className="ml-auto text-emerald-400/60 hover:text-emerald-400 cursor-pointer"
           >
             <X className="h-3 w-3" />
           </button>
         </div>
       </div>
+
+      {/* Image URL insertion banner */}
+      {showImageUrlInput && (
+        <div className="flex flex-col sm:flex-row items-center gap-2 p-2.5 rounded-xl border border-primary/30 bg-primary/10 text-xs">
+          <div className="flex items-center gap-1.5 text-primary font-semibold shrink-0">
+            <ImageIcon className="h-4 w-4" />
+            <span>Insert Image:</span>
+          </div>
+          <input
+            type="url"
+            placeholder="Image URL (e.g. https://images.unsplash.com/...)"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+          />
+          <input
+            type="text"
+            placeholder="Caption / Description"
+            value={imageAlt}
+            onChange={(e) => setImageAlt(e.target.value)}
+            className="w-full sm:w-48 h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => insertImage(imageUrl, imageAlt)}
+              className="h-8 text-xs cursor-pointer"
+            >
+              Insert
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImageUrlInput(false)}
+              className="h-8 text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-card overflow-hidden transition-all focus-within:ring-1 focus-within:ring-ring">
         {/* ── Toolbar ── */}
@@ -350,7 +609,7 @@ export function FormattedTextarea({
               type="button"
               onClick={() => applyFormat("**", "**")}
               title="Bold selected text (**word**)"
-              className="p-1 px-2 rounded hover:bg-muted font-bold text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted font-bold text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <Bold className="h-3.5 w-3.5" />
               <span>Bold</span>
@@ -360,7 +619,7 @@ export function FormattedTextarea({
               type="button"
               onClick={() => applyFormat("<u>", "</u>")}
               title="Underline selected text (<u>word</u>)"
-              className="p-1 px-2 rounded hover:bg-muted underline font-medium text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted underline font-medium text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <Underline className="h-3.5 w-3.5" />
               <span>Underline</span>
@@ -370,7 +629,7 @@ export function FormattedTextarea({
               type="button"
               onClick={() => applyFormat("*", "*")}
               title="Italic selected text (*word*)"
-              className="p-1 px-2 rounded hover:bg-muted italic text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted italic text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <Italic className="h-3.5 w-3.5" />
               <span>Italic</span>
@@ -382,7 +641,7 @@ export function FormattedTextarea({
               type="button"
               onClick={() => applyFormat("`", "`")}
               title="Code format (`code`)"
-              className="p-1 px-2 rounded hover:bg-muted font-mono text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted font-mono text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <Code className="h-3.5 w-3.5" />
               <span>Code</span>
@@ -392,7 +651,7 @@ export function FormattedTextarea({
               type="button"
               onClick={insertBulletList}
               title="Insert bullet list (- item)"
-              className="p-1 px-2 rounded hover:bg-muted text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <List className="h-3.5 w-3.5" />
               <span>Bullet List</span>
@@ -402,7 +661,7 @@ export function FormattedTextarea({
               type="button"
               onClick={insertOrderedList}
               title="Insert numbered list (1. item)"
-              className="p-1 px-2 rounded hover:bg-muted text-foreground transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-muted text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <ListOrdered className="h-3.5 w-3.5" />
               <span>Numbered List</span>
@@ -410,6 +669,40 @@ export function FormattedTextarea({
 
             <div className="h-4 w-px bg-border mx-0.5" />
 
+            {/* + Table */}
+            <button
+              type="button"
+              onClick={insertTable}
+              title="Insert structured comparison table (| Header 1 | Header 2 |)"
+              className="p-1 px-2 rounded hover:bg-blue-500/20 text-blue-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              <span>+ Table</span>
+            </button>
+
+            {/* ✨ Draw / Generate Diagram */}
+            <button
+              type="button"
+              onClick={() => setShowDiagramModal(true)}
+              title="Draw diagram or pick AI diagram templates"
+              className="p-1 px-2 rounded hover:bg-cyan-500/20 text-cyan-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            >
+              <Bot className="h-3.5 w-3.5 text-cyan-400" />
+              <span>✨ Draw Diagram</span>
+            </button>
+
+            {/* + Picture / Image */}
+            <button
+              type="button"
+              onClick={() => setShowImageUrlInput(!showImageUrlInput)}
+              title="Insert picture or image link"
+              className="p-1 px-2 rounded hover:bg-emerald-500/20 text-emerald-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              <span>+ Picture</span>
+            </button>
+
+            {/* + Step Card */}
             <button
               type="button"
               onClick={() =>
@@ -418,7 +711,7 @@ export function FormattedTextarea({
                 )
               }
               title="Insert visual dry-run step card template"
-              className="p-1 px-2 rounded hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <span>+ Step Card</span>
             </button>
@@ -427,7 +720,7 @@ export function FormattedTextarea({
               type="button"
               onClick={() => applyFormat("\nInitial Number: 1234\n-------------------\n")}
               title="Insert header badge & divider"
-              className="p-1 px-2 rounded hover:bg-amber-500/20 text-amber-400 font-semibold transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-amber-500/20 text-amber-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <span>+ Header &amp; Line</span>
             </button>
@@ -456,7 +749,7 @@ export function FormattedTextarea({
                 }, 10);
               }}
               title="Insert constraint / warning note (> text)"
-              className="p-1 px-2 rounded hover:bg-amber-500/20 text-amber-400 font-semibold transition-colors flex items-center gap-1 text-[11px]"
+              className="p-1 px-2 rounded hover:bg-amber-500/20 text-amber-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>⚠ Constraint</span>
@@ -468,9 +761,9 @@ export function FormattedTextarea({
             <button
               type="button"
               onClick={handleSmartFormat}
-              title="Auto-detect step traces, arrow lines, numbered lists → convert to Step Card format"
+              title="Auto-detect column tables, step traces, arrow lines, numbered lists → format nicely"
               className={cn(
-                "p-1 px-2 rounded font-semibold transition-all flex items-center gap-1 text-[11px] border shadow-xs",
+                "p-1 px-2 rounded font-semibold transition-all flex items-center gap-1 text-[11px] border shadow-xs cursor-pointer",
                 hasFormattableContent
                   ? "bg-gradient-to-r from-violet-500/30 to-primary/20 text-violet-200 border-violet-400/50 animate-pulse hover:animate-none hover:from-violet-500/40"
                   : "bg-gradient-to-r from-violet-500/10 to-primary/10 text-violet-300/70 border-violet-500/20 hover:from-violet-500/20 hover:border-violet-400/40 hover:text-violet-200"
@@ -484,7 +777,7 @@ export function FormattedTextarea({
               type="button"
               onClick={handleCleanMath}
               title="Strip LaTeX dollar math notation ($x^N$ -> x^N)"
-              className="p-1 px-2 rounded font-semibold transition-all flex items-center gap-1 text-[11px] border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 shadow-xs"
+              className="p-1 px-2 rounded font-semibold transition-all flex items-center gap-1 text-[11px] border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 shadow-xs cursor-pointer"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Clean Math ($)</span>
@@ -492,8 +785,7 @@ export function FormattedTextarea({
           </div>
 
           <span className="text-[10px] text-muted-foreground font-mono hidden sm:inline-flex items-center gap-1 shrink-0">
-            <Sparkles className="h-3 w-3 text-amber-400" /> Highlight text to
-            format
+            <Sparkles className="h-3 w-3 text-amber-400" /> Highlight text to format
           </span>
         </div>
 
@@ -513,12 +805,12 @@ export function FormattedTextarea({
             )}
           />
         ) : (
-          <div className="p-3.5 min-h-[100px] max-h-[400px] overflow-y-auto bg-muted/10 border-t border-border">
+          <div className="p-3.5 min-h-[120px] max-h-[450px] overflow-y-auto bg-muted/10 border-t border-border">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
               <Eye className="h-3 w-3 text-primary" />
-              <span>Student Section View Preview</span>
+              <span>Live Article &amp; Reader Preview</span>
               <span className="ml-auto text-[9px] text-muted-foreground/50 normal-case tracking-normal font-normal">
-                Renders exactly as students see it
+                Renders tables, diagrams &amp; step cards as published to students
               </span>
             </div>
             {value.trim() ? (
@@ -526,7 +818,7 @@ export function FormattedTextarea({
             ) : (
               <p className="text-xs text-muted-foreground italic">
                 No text entered yet. Paste content or use the toolbar — click ⚡
-                Smart Format to auto-detect step patterns!
+                Smart Format to auto-detect tables &amp; step cards!
               </p>
             )}
           </div>
@@ -538,13 +830,109 @@ export function FormattedTextarea({
         <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] border border-violet-500/20 bg-violet-500/5 text-violet-300/80">
           <Wand2 className="h-3 w-3 shrink-0 text-violet-400" />
           <span>
-            Step/trace patterns detected. Click{" "}
+            Column tabular data or step patterns detected. Click{" "}
             <strong className="text-violet-300">⚡ Smart Format</strong> to
-            auto-convert them to visual Step Cards.
+            auto-convert them to visual Tables &amp; Step Cards.
           </span>
+        </div>
+      )}
+
+      {/* ── AI Diagram Drawer & Generator Modal ── */}
+      {showDiagramModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl rounded-2xl border border-cyan-500/30 bg-card p-6 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 font-bold">
+                  <Workflow className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">✨ AI Diagram &amp; Table Generator</h3>
+                  <p className="text-xs text-muted-foreground">Select a diagram template or describe logic to draw</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDiagramModal(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Custom Diagram Generator Input */}
+            <div className="space-y-2 bg-muted/20 p-3 rounded-xl border border-border">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Bot className="h-3.5 w-3.5 text-cyan-400" />
+                <span>Describe Custom Flow / Diagram to Draw</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Sliding window pointer movement, LRU Cache eviction flow..."
+                  value={customDiagramDesc}
+                  onChange={(e) => setCustomDiagramDesc(e.target.value)}
+                  className="flex-1 h-9 px-3 rounded-lg border border-input bg-background text-xs"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleGenerateCustomDiagram}
+                  disabled={!customDiagramDesc.trim() || isGeneratingDiagram}
+                  className="h-9 px-3 text-xs bg-cyan-600 hover:bg-cyan-700 text-white cursor-pointer"
+                >
+                  {isGeneratingDiagram ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Generate Diagram"
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Presets Grid */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Or pick a pre-built visual template:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+                {DIAGRAM_PRESETS.map((preset, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => insertPresetDiagram(preset.code)}
+                    className="p-3 rounded-xl border border-border/80 bg-muted/10 hover:border-cyan-500/40 hover:bg-cyan-500/5 text-left transition-all group cursor-pointer space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-foreground group-hover:text-cyan-400 transition-colors">
+                        {preset.name}
+                      </span>
+                      {preset.type === "table" ? (
+                        <TableIcon className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      ) : (
+                        <Workflow className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground block line-clamp-1">
+                      Click to insert {preset.type} into article
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDiagramModal(false)}
+                className="text-xs cursor-pointer"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
-

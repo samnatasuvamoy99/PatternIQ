@@ -2560,64 +2560,17 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Content Header with Preview Toggle */}
+              {/* Content Header with FormattedTextarea & Preview */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-foreground">
-                    Article Content (Markdown)
-                    <span className="text-muted-foreground font-normal ml-1.5">
-                      ({newArticleContent.length} chars, min 50)
-                    </span>
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsArticlePreview(!isArticlePreview)}
-                    className="h-7 text-xs gap-1 px-2.5 cursor-pointer"
-                  >
-                    {isArticlePreview ? (
-                      <>
-                        <PenSquare className="h-3 w-3" />
-                        <span>Edit Text</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-3 w-3" />
-                        <span>Preview</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {isArticlePreview ? (
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3 min-h-[200px] max-h-[320px] overflow-y-auto">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs font-mono">{newArticleCategory}</Badge>
-                      {newArticleSubtopic && (
-                        <Badge variant="outline" className="text-xs">{newArticleSubtopic}</Badge>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground">{newArticleTitle || "Untitled Article"}</h3>
-                    {newArticleExcerpt && (
-                      <p className="text-xs text-muted-foreground italic border-l-2 border-primary pl-2.5">
-                        {newArticleExcerpt}
-                      </p>
-                    )}
-                    <div className="whitespace-pre-line text-xs leading-relaxed text-foreground/90 pt-2 border-t border-border font-sans">
-                      {newArticleContent || "No content written yet."}
-                    </div>
-                  </div>
-                ) : (
-                  <Textarea
-                    placeholder="Write complete article with markdown explanations, code blocks, and diagrams..."
-                    rows={8}
-                    required
-                    value={newArticleContent}
-                    onChange={(e) => setNewArticleContent(e.target.value)}
-                    className="font-mono text-xs leading-relaxed"
-                  />
-                )}
+                <FormattedTextarea
+                  label={`Article Content (${newArticleContent.length} chars, min 50)`}
+                  value={newArticleContent}
+                  onChange={setNewArticleContent}
+                  rows={8}
+                  placeholder="Write complete technical article with step cards, pseudocode, pictures, and diagrams..."
+                  required
+                  category={newArticleCategory}
+                />
               </div>
 
               {/* Publication Status Selector */}

@@ -5,7 +5,7 @@ import { rejectArticleSchema } from "@/lib/validations/article.validation";
 import { rejectArticle } from "@/services/article.service";
 import { AuthContext } from "@/lib/auth";
 
-export const PATCH = apiHandler(async (
+const handler = apiHandler(async (
   req: NextRequest, { params, auth }: { params: { id: string }; auth: AuthContext | null }
 ) => {
   requireAdmin(auth);
@@ -14,3 +14,7 @@ export const PATCH = apiHandler(async (
   const article = await rejectArticle(params.id, reason);
   return ok(article, "Article rejected");
 });
+
+export const POST = handler;
+export const PATCH = handler;
+
