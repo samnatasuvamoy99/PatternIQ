@@ -50,7 +50,7 @@ export default function Home() {
             </span>{" "}
             <span
               className="inline-block animate-word-reveal"
-              style={{ animationDelay: "500ms" }}
+              style={{ animationDelay: "220ms" }}
             >
               <span className="text-muted-foreground/60 line-through decoration-destructive/50">
                 500 Questions
@@ -60,7 +60,7 @@ export default function Home() {
             <br />
             <span
               className="inline-block animate-word-reveal"
-              style={{ animationDelay: "800ms" }}
+              style={{ animationDelay: "460ms" }}
             >
               Master{" "}
               <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
