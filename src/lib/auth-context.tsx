@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,28 +29,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadFromStorage = () => {
     try {
       const storedToken = localStorage.getItem("patterniq_access_token");
       const storedUser = localStorage.getItem("patterniq_user");
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
+      } else {
+        setToken(null);
+        setUser(null);
       }
     } catch (e) {
       console.error("Failed to load auth state", e);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadFromStorage();
 
     const handleExpired = () => {
       setUser(null);
       setToken(null);
     };
 
+    const handleUpdated = () => {
+      loadFromStorage();
+    };
+
     window.addEventListener("patterniq:auth_expired", handleExpired);
-    return () => window.removeEventListener("patterniq:auth_expired", handleExpired);
+    window.addEventListener("patterniq:auth_updated", handleUpdated);
+    return () => {
+      window.removeEventListener("patterniq:auth_expired", handleExpired);
+      window.removeEventListener("patterniq:auth_updated", handleUpdated);
+    };
   }, []);
+
+  const setAuthSession = (user: User, accessToken: string, refreshToken: string) => {
+    setUser(user);
+    setToken(accessToken);
+    localStorage.setItem("patterniq_access_token", accessToken);
+    localStorage.setItem("patterniq_refresh_token", refreshToken);
+    localStorage.setItem("patterniq_user", JSON.stringify(user));
+    window.dispatchEvent(new CustomEvent("patterniq:auth_updated"));
+  };
 
   const login = async (email: string, password: string) => {
     const res = await apiClient<{ user: User; accessToken: string; refreshToken: string }>("/auth/login", {
@@ -109,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, setAuthSession }}>
       {children}
     </AuthContext.Provider>
   );

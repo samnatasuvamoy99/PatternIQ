@@ -8,6 +8,23 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Brain, ArrowRight, Loader2, AlertCircle, Lock } from "lucide-react";
+import { PramaanButton } from "@/components/auth/pramaan-button";
+
+function formatAuthError(rawError: string | null | undefined): string | null {
+  if (!rawError) return null;
+  const lower = rawError.toLowerCase();
+  if (
+    lower.includes("prisma") ||
+    lower.includes("database") ||
+    lower.includes("invocation") ||
+    lower.includes("econnrefused") ||
+    lower.includes("failed") ||
+    rawError.length > 100
+  ) {
+    return "Authentication failed. Please try again later.";
+  }
+  return rawError;
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -17,7 +34,7 @@ function LoginForm() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(formatAuthError(searchParams?.get("error")));
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,8 +117,7 @@ function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
@@ -115,6 +131,19 @@ function LoginForm() {
                   </>
                 )}
               </Button>
+
+              <div className="relative flex items-center justify-center pt-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <span className="relative bg-card px-2 text-xs uppercase text-muted-foreground">
+                  or continue with
+                </span>
+              </div>
+
+              <PramaanButton redirect={redirect} mode="signin" />
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3 pt-0">
               <p className="text-center text-xs text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link href={registerHref} className="font-semibold text-primary hover:underline">

@@ -6,11 +6,11 @@
 
 @layer base {
   :root {
-    --background: oklch(1 0 0);
+    --background: oklch(1 0 0 / 90%);
     --foreground: oklch(0.148 0.004 228.8);
-    --card: oklch(1 0 0);
+    --card: oklch(1 0 0 / 90%);
     --card-foreground: oklch(0.148 0.004 228.8);
-    --popover: oklch(1 0 0);
+    --popover: oklch(1 0 0 / 90%);
     --popover-foreground: oklch(0.148 0.004 228.8);
     --primary: oklch(0.852 0.199 91.936);
     --primary-foreground: oklch(0.421 0.095 57.708);
