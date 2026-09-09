@@ -155,7 +155,7 @@ function autoFormatText(text: string): string {
 
 // ─── Preset Diagrams List ───────────────────────────────────────────────────
 
-const DIAGRAM_PRESETS = [
+const DSA_DIAGRAM_PRESETS = [
   {
     name: "Data Structure Quick Comparison Table",
     type: "table",
@@ -217,6 +217,52 @@ RightChild --> L2 [Left Leaf]
 RightChild --> R2 [Right Leaf]
 \`\`\``,
   },
+];
+
+const DEVOPS_DIAGRAM_PRESETS = [
+  {
+    name: "CI/CD Pipeline Flow",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph LR
+Dev [Developer Commit] --> CI [CI Pipeline]
+CI --> Lint [Lint & Test]
+Lint --> Build [Build Image]
+Build --> Scan [Security Scan]
+Scan --> Deploy [Deploy to Staging]
+Deploy --> Prod [Production Release]
+\`\`\``,
+  },
+  {
+    name: "Kubernetes Deployment Layout",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph TD
+User [Client Traffic] --> Ingress [Ingress / Load Balancer]
+Ingress --> Service [Kubernetes Service]
+Service --> Pods [Pod Replica Set]
+Pods --> App [App Container]
+App --> Config [Config / Secrets]
+App --> DB [(Persistent Data)]
+\`\`\``,
+  },
+  {
+    name: "Release Promotion Flow",
+    type: "diagram",
+    code: `\`\`\`mermaid
+graph TD
+Commit [Code Commit] --> Test [Automated Tests]
+Test --> Build [Build Artifact]
+Build --> QA [Staging Environment]
+QA --> Approve {Approval Gate}
+Approve -- Yes --> Prod [Production Deployment]
+Approve -- No --> Fix [Fix Issues]
+Fix --> Test
+\`\`\``,
+  },
+];
+
+const GENERAL_DIAGRAM_PRESETS = [
   {
     name: "System Design Microservices Architecture",
     type: "diagram",
@@ -228,7 +274,29 @@ Gateway --> Cache [(Redis Distributed Cache)]
 Gateway --> DB [(Primary Database)]
 \`\`\``,
   },
+  {
+    name: "API Request Sequence",
+    type: "diagram",
+    code: `\`\`\`mermaid
+sequenceDiagram
+User->>Gateway: Request resource
+Gateway->>Service: Validate token
+Service->>DB: Fetch data
+DB-->>Service: Return result
+Service-->>Gateway: Response
+Gateway-->>User: Deliver output
+\`\`\``,
+  },
 ];
+
+function getRelevantDiagramPresets(category?: string) {
+  const normalized = (category || "DSA").toUpperCase();
+
+  if (normalized === "DEVOPS") return DEVOPS_DIAGRAM_PRESETS;
+  if (normalized === "DSA" || normalized === "PROGRAMMING" || normalized === "CORE_CS") return DSA_DIAGRAM_PRESETS;
+
+  return [...DSA_DIAGRAM_PRESETS, ...GENERAL_DIAGRAM_PRESETS];
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -253,6 +321,7 @@ export function FormattedTextarea({
   const [imageAlt, setImageAlt] = useState("");
   const [toast, setToast] = useState<"applied" | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const diagramPresets = getRelevantDiagramPresets(category);
 
   const showToast = useCallback((type: "applied") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -426,18 +495,22 @@ export function FormattedTextarea({
     setIsGeneratingDiagram(true);
 
     try {
+      const safeCategory = (category || "DSA").toUpperCase();
       const res = await fetch("/api/v1/gemini/diagram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: customDiagramDesc.trim(),
-          category: category || "general",
+          category: safeCategory,
         }),
       });
 
       const data = await res.json();
       if (data.success && data.data) {
-        insertPresetDiagram(data.data);
+        // Always wrap in ```mermaid fences so the live preview renders it as a diagram
+        const rawCode = data.data.trim();
+        const wrapped = rawCode.startsWith("```") ? rawCode : `\`\`\`mermaid\n${rawCode}\n\`\`\``;
+        insertPresetDiagram(wrapped);
         setCustomDiagramDesc("");
       } else {
         alert(data.error?.message || "Failed to generate diagram");
@@ -848,7 +921,9 @@ export function FormattedTextarea({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-foreground">✨ AI Diagram &amp; Table Generator</h3>
-                  <p className="text-xs text-muted-foreground">Select a diagram template or describe logic to draw</p>
+                  <p className="text-xs text-muted-foreground">
+                    {category ? `Current section: ${category}` : "Select a diagram template or describe logic to draw"}
+                  </p>
                 </div>
               </div>
               <button
@@ -869,7 +944,13 @@ export function FormattedTextarea({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="e.g. Sliding window pointer movement, LRU Cache eviction flow..."
+                  placeholder={
+                    category === "DEVOPS"
+                      ? "e.g. GitHub Actions pipeline, Docker build flow, Kubernetes rollout..."
+                      : category === "DSA"
+                        ? "e.g. Sliding window pointer movement, heapify, tree traversal..."
+                        : "e.g. API flow, system architecture, data flow..."
+                  }
                   value={customDiagramDesc}
                   onChange={(e) => setCustomDiagramDesc(e.target.value)}
                   className="flex-1 h-9 px-3 rounded-lg border border-input bg-background text-xs"
@@ -894,7 +975,7 @@ export function FormattedTextarea({
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Or pick a pre-built visual template:</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
-                {DIAGRAM_PRESETS.map((preset, pIdx) => (
+                {diagramPresets.map((preset, pIdx) => (
                   <button
                     key={pIdx}
                     type="button"

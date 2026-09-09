@@ -42,15 +42,15 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
           {/* Primary Headline */}
           <h1 className="font-heading text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.12]">
-            <span 
-              className="inline-block animate-word-reveal" 
+            <span
+              className="inline-block animate-word-reveal"
               style={{ animationDelay: "0ms" }}
             >
               Stop Memorizing
             </span>{" "}
-            <span 
-              className="inline-block animate-word-reveal" 
-              style={{ animationDelay: "300ms" }}
+            <span
+              className="inline-block animate-word-reveal"
+              style={{ animationDelay: "1000ms" }}
             >
               <span className="text-muted-foreground/60 line-through decoration-destructive/50">
                 500 Questions
@@ -58,9 +58,9 @@ export default function Home() {
               .
             </span>
             <br />
-            <span 
-              className="inline-block animate-word-reveal" 
-              style={{ animationDelay: "600ms" }}
+            <span
+              className="inline-block animate-word-reveal"
+              style={{ animationDelay: "1000ms" }}
             >
               Master{" "}
               <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">

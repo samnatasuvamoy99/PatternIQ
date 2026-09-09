@@ -14,7 +14,16 @@ import { FormattedTextarea } from "@/components/ui/formatted-textarea";
 import { FormattedText } from "@/components/ui/formatted-text";
 import { apiClient } from "@/lib/api-client";
 
-const CATEGORIES = ["DSA", "SYSTEM_DESIGN", "DEVELOPMENT", "CORE_CS", "DATABASE", "GENAI"];
+const CATEGORIES = [
+  "DSA",
+  "PROGRAMMING",
+  "CORE_CS",
+  "SYSTEM_DESIGN",
+  "DEVELOPMENT",
+  "DATABASE",
+  "DEVOPS",
+  "GENAI",
+];
 
 export default function NewArticlePage() {
   const router = useRouter();

@@ -4,12 +4,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Ordered list of models to try — falls through on 503 / 404
 const FALLBACK_MODELS = [
   "gemini-3.8-flash",
-  "gemini-3.7-flash",
+  "gemini-3.5-flash",
   "gemini-2.5-flash",
-  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-pro",
 ];
 
 function buildSystemPrompt(category?: string): string {
+  const cat = (category || "GENERAL").toUpperCase();
+
   let instruction = `You are a technical diagram generator for a software engineering platform.
 Generate a valid Mermaid diagram for the user's description.
 Rules:
@@ -18,27 +20,25 @@ Rules:
 - Do NOT use classDef or class statements.
 - Use simple, clean node labels. Keep node text concise (max 5 words per label).
 - Prefer graph TD or graph LR for flowcharts. Use erDiagram for databases, sequenceDiagram for APIs.
-- Make the diagram meaningful and educational — not a placeholder.`;
+- Make the diagram meaningful and educational — not a placeholder.
+- IMPORTANT: Stay strictly within the selected category. Do not mix DSA and DevOps diagrams or generate unrelated concepts.`;
 
-  if (category) {
-    const cat = category.toUpperCase();
-    if (cat === "DATABASE") {
-      instruction += "\nFocus on Entity-Relationship Diagrams (erDiagram) or tabular structures representing schemas.";
-    } else if (cat === "SYSTEM_DESIGN") {
-      instruction += "\nFocus on Architecture diagrams (graph TD/LR) representing microservices, databases, and client interactions.";
-    } else if (cat === "DSA") {
-      instruction += "\nFocus on flowcharts, tree structures, or array visualizations to explain Data Structures and Algorithms.";
-    } else if (cat === "DEVOPS") {
-      instruction += "\nFocus on CI/CD pipelines, deployment flows, or cloud infrastructure diagrams.";
-    } else if (cat === "GENAI") {
-      instruction += "\nFocus on AI/ML pipeline flows: data ingestion, model training, inference, and evaluation steps.";
-    } else if (cat === "DEVELOPMENT") {
-      instruction += "\nFocus on software architecture, class diagrams (classDiagram), or sequence diagrams (sequenceDiagram).";
-    } else if (cat === "CORE_CS") {
-      instruction += "\nFocus on OS, networking, or compiler concepts using clear flowcharts or state diagrams (stateDiagram-v2).";
-    } else if (cat === "PROGRAMMING") {
-      instruction += "\nFocus on control flow, recursion trees, or call stack visualizations using flowcharts.";
-    }
+  if (cat === "DATABASE") {
+    instruction += "\nFocus on Entity-Relationship Diagrams (erDiagram) or tabular structures representing schemas.";
+  } else if (cat === "SYSTEM_DESIGN") {
+    instruction += "\nFocus on Architecture diagrams (graph TD/LR) representing microservices, databases, and client interactions.";
+  } else if (cat === "DSA") {
+    instruction += "\nFocus only on flowcharts, trees, arrays, graphs, recursion, or pointers used in Data Structures and Algorithms. Do not generate DevOps, cloud, or app architecture diagrams here.";
+  } else if (cat === "DEVOPS") {
+    instruction += "\nFocus only on CI/CD pipelines, deployment flows, cloud infrastructure, containers, and operational workflows. Do not generate DSA or generic algorithm diagrams here.";
+  } else if (cat === "GENAI") {
+    instruction += "\nFocus on AI/ML pipeline flows: data ingestion, model training, inference, and evaluation steps.";
+  } else if (cat === "DEVELOPMENT") {
+    instruction += "\nFocus on software architecture, class diagrams (classDiagram), or sequence diagrams (sequenceDiagram).";
+  } else if (cat === "CORE_CS") {
+    instruction += "\nFocus on OS, networking, or compiler concepts using clear flowcharts or state diagrams (stateDiagram-v2).";
+  } else if (cat === "PROGRAMMING") {
+    instruction += "\nFocus on control flow, recursion trees, or call stack visualizations using flowcharts.";
   }
 
   return instruction;
