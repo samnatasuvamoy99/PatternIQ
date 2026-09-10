@@ -41,9 +41,13 @@ export async function GET(req: NextRequest) {
     } catch {
       origin = req.nextUrl.origin || "http://localhost:3000";
     }
-    const errorMessage = encodeURIComponent(
-      "Unable to connect to Pramaan service. Please try again later."
-    );
+
+    const message =
+      error?.message?.includes("not configured")
+        ? "Pramaan OAuth is not configured yet. Please add the valid issuer and credentials."
+        : "Unable to connect to Pramaan service. Please try again later.";
+
+    const errorMessage = encodeURIComponent(message);
     return NextResponse.redirect(`${origin}/login?error=${errorMessage}`);
   }
 }

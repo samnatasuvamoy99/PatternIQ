@@ -378,14 +378,14 @@ export default function PatternDetailPage({ params }: { params: { slug: string }
                     {/* 4. Interview Identification Rule */}
                     <Card className="border-amber-500/20 bg-amber-500/5">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2 text-amber-500 font-bold">
-                          <Zap className="h-4.5 w-4.5" />
+                        <CardTitle className="text-base flex items-center gap-2 text-foreground font-bold">
+                          <Zap className="h-4.5 w-4.5 text-amber-500" />
                           <span>4. Interview Identification Rule</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         {pattern.interviewRule ? (
-                          <FormattedText content={pattern.interviewRule} className="text-amber-200/90 font-medium" />
+                          <FormattedText content={pattern.interviewRule} className="text-foreground dark:text-amber-200/90 font-medium" />
                         ) : (
                           <p className="text-xs text-muted-foreground italic">Golden rule for quick recognition in tech interviews.</p>
                         )}

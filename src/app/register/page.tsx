@@ -126,7 +126,11 @@ function RegisterForm() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full h-10 text-base font-semibold rounded-xl shadow-sm transition-all hover:shadow-md"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -140,16 +144,9 @@ function RegisterForm() {
                 )}
               </Button>
 
-              <div className="relative flex items-center justify-center pt-1">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <span className="relative bg-card px-2 text-xs uppercase text-muted-foreground">
-                  or continue with
-                </span>
+              <div className="flex justify-center pt-2">
+                <PramaanButton redirect={redirect} mode="signup" />
               </div>
-
-              <PramaanButton redirect={redirect} mode="signup" />
             </CardContent>
             <CardFooter className="flex flex-col gap-3 pt-0">
               <p className="text-center text-xs text-muted-foreground">

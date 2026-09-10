@@ -5,9 +5,15 @@ let pramaanInstance: PramaanClient | null = null;
 
 export function getPramaanClient(): PramaanClient {
   if (!pramaanInstance) {
-    const issuer = process.env.PRAMAAN_ISSUER || "http://localhost:4000";
-    const clientId = process.env.PRAMAAN_CLIENT_ID || "";
-    const clientSecret = process.env.PRAMAAN_CLIENT_SECRET;
+    const issuer = process.env.PRAMAAN_ISSUER?.trim();
+    const clientId = process.env.PRAMAAN_CLIENT_ID?.trim();
+    const clientSecret = process.env.PRAMAAN_CLIENT_SECRET?.trim();
+
+    if (!issuer || !clientId || issuer.includes("pramaan.example.com")) {
+      throw new Error(
+        "Pramaan OAuth is not configured. Set PRAMAAN_ISSUER and PRAMAAN_CLIENT_ID in your environment."
+      );
+    }
 
     pramaanInstance = new PramaanClient({
       issuer,
