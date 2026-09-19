@@ -298,6 +298,7 @@ export default function AdminPage() {
   const [patternSearchQuery, setPatternSearchQuery] = useState("");
   const [patternTopicFilter, setPatternTopicFilter] = useState("ALL");
   const [patternViewMode, setPatternViewMode] = useState<"accordion" | "flat">("accordion");
+  const [modalProblemSearch, setModalProblemSearch] = useState("");
 
   // Toggle accordion for a topic
   const toggleAdminTopic = (topicId: string) => {
@@ -1507,9 +1508,12 @@ export default function AdminPage() {
                                         <span className="text-[11px] text-amber-400 font-mono">
                                           {"★".repeat(pat.importance || 5)}
                                         </span>
+                                        <Badge variant="outline" className="text-[10px] font-mono">
+                                          {pat.problems?.length ?? pat._count?.problems ?? 0} Problems
+                                        </Badge>
                                       </div>
                                       <span className="text-[11px] text-muted-foreground block truncate">
-                                        {pat.shortDescription || pat.intuition || "No summary provided"} • {pat._count?.problems ?? 0} Problems Attached
+                                        {pat.shortDescription || pat.intuition || "No summary provided"}
                                       </span>
                                     </div>
                                   </div>
@@ -1643,9 +1647,12 @@ export default function AdminPage() {
                             <span className="text-xs text-amber-400 font-mono">
                               {"★".repeat(pat.importance || 5)}
                             </span>
+                            <Badge variant="outline" className="text-[11px] font-mono">
+                              {pat.problems?.length ?? pat._count?.problems ?? 0} Problems
+                            </Badge>
                           </div>
                           <span className="text-xs text-muted-foreground block truncate">
-                            Track: {pat.topic?.name || "Unassigned"} • {pat._count?.problems ?? 0} Problems Attached
+                            Track: {pat.topic?.name || "Unassigned"} • {pat.shortDescription || pat.intuition || "Algorithmic pattern"}
                           </span>
                         </div>
                       </div>
@@ -2414,9 +2421,22 @@ export default function AdminPage() {
                     />
                   </div>
 
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 uppercase tracking-wider">
+                      <Target className="h-3.5 w-3.5" />
+                      <span>5. Problem Coverage in this pattern</span>
+                    </h3>
+                    <FormattedTextarea
+                      value={newPatternCoreIdea}
+                      onChange={setNewPatternCoreIdea}
+                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] Product of Array Except Self — LeetCode\n[ ] Trapping Rain Water — GeeksforGeeks\n[ ] Leaders in an Array problem — TakeUForward`}
+                      rows={5}
+                    />
+                  </div>
+
                   <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
                     <h3 className="text-xs font-bold text-amber-500 flex items-center gap-1.5 uppercase tracking-wider">
-                      <span>5. Pseudocode Blueprint</span>
+                      <span>6. Pseudocode Blueprint</span>
                     </h3>
                     <Textarea
                       rows={5}
@@ -2426,49 +2446,87 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* 6. Benchmark Problems Selection */}
-                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
-                        Benchmark Problems ({newPatternSelectedProblems.length} Selected)
-                      </h3>
-                      <span className="text-[11px] text-muted-foreground">Select problems to link to this pattern</span>
+                  {/* 7. Practice Problems Selection */}
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          <span>7. Link Practice Problems Catalog ({newPatternSelectedProblems.length} Selected)</span>
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Scope: {problems.filter(p => newPatternSelectedProblems.includes(p.id) && p.difficulty === "EASY").length} Easy •{" "}
+                          {problems.filter(p => newPatternSelectedProblems.includes(p.id) && p.difficulty === "MEDIUM").length} Medium •{" "}
+                          {problems.filter(p => newPatternSelectedProblems.includes(p.id) && p.difficulty === "HARD").length} Hard
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setNewPatternSelectedProblems(problems.map((p) => p.id))}
+                          className="text-[10px] h-6 px-2 text-primary"
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setNewPatternSelectedProblems([])}
+                          className="text-[10px] h-6 px-2 text-muted-foreground"
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <Input
+                        placeholder="Filter problems by title or platform..."
+                        value={modalProblemSearch}
+                        onChange={(e) => setModalProblemSearch(e.target.value)}
+                        className="pl-7 text-[11px] h-7 bg-background"
+                      />
                     </div>
 
                     <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-background divide-y divide-border/60">
-                      {problems.length > 0 ? (
-                        problems.map((prob) => {
-                          const isChecked = newPatternSelectedProblems.includes(prob.id);
-                          return (
-                            <label
-                              key={prob.id}
-                              className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setNewPatternSelectedProblems((prev) => [...prev, prob.id]);
-                                    } else {
-                                      setNewPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
-                                    }
-                                  }}
-                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
-                                />
-                                <span className="font-semibold text-foreground truncate">{prob.title}</span>
-                                <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
-                                  {prob.difficulty}
-                                </Badge>
-                              </div>
-                              <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
-                            </label>
-                          );
-                        })
+                      {problems.filter(p => modalProblemSearch ? p.title.toLowerCase().includes(modalProblemSearch.toLowerCase()) || (p.platform || "").toLowerCase().includes(modalProblemSearch.toLowerCase()) : true).length > 0 ? (
+                        problems
+                          .filter(p => modalProblemSearch ? p.title.toLowerCase().includes(modalProblemSearch.toLowerCase()) || (p.platform || "").toLowerCase().includes(modalProblemSearch.toLowerCase()) : true)
+                          .map((prob) => {
+                            const isChecked = newPatternSelectedProblems.includes(prob.id);
+                            return (
+                              <label
+                                key={prob.id}
+                                className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setNewPatternSelectedProblems((prev) => [...prev, prob.id]);
+                                      } else {
+                                        setNewPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
+                                      }
+                                    }}
+                                    className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                                  />
+                                  <span className="font-semibold text-foreground truncate">{prob.title}</span>
+                                  <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
+                                    {prob.difficulty}
+                                  </Badge>
+                                </div>
+                                <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
+                              </label>
+                            );
+                          })
                       ) : (
                         <div className="p-4 text-center text-xs text-muted-foreground">
-                          No problems available in database. Create problems in Problems tab first to link here.
+                          {modalProblemSearch ? "No problems matching filter." : "No problems available in database. Create problems in Problems tab first to link here."}
                         </div>
                       )}
                     </div>
@@ -2728,9 +2786,22 @@ export default function AdminPage() {
                     />
                   </div>
 
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-3">
+                    <h3 className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 uppercase tracking-wider">
+                      <Target className="h-3.5 w-3.5" />
+                      <span>5. Problem Coverage in this pattern</span>
+                    </h3>
+                    <FormattedTextarea
+                      value={editingPattern.coreIdea || ""}
+                      onChange={(val) => setEditingPattern({ ...editingPattern, coreIdea: val })}
+                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] Product of Array Except Self — LeetCode\n[ ] Trapping Rain Water — GeeksforGeeks\n[ ] Leaders in an Array problem — TakeUForward`}
+                      rows={5}
+                    />
+                  </div>
+
                   <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
                     <h3 className="text-xs font-bold text-amber-500 flex items-center gap-1.5 uppercase tracking-wider">
-                      <span>5. Pseudocode Blueprint</span>
+                      <span>6. Pseudocode Blueprint</span>
                     </h3>
                     <Textarea
                       rows={5}
@@ -2740,49 +2811,87 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* 6. Benchmark Problems Selection */}
-                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
-                        Benchmark Problems ({editingPatternSelectedProblems.length} Selected)
-                      </h3>
-                      <span className="text-[11px] text-muted-foreground">Select problems to link to this pattern</span>
+                  {/* 7. Practice Problems Selection */}
+                  <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          <span>7. Link Practice Problems Catalog ({editingPatternSelectedProblems.length} Selected)</span>
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Scope: {problems.filter(p => editingPatternSelectedProblems.includes(p.id) && p.difficulty === "EASY").length} Easy •{" "}
+                          {problems.filter(p => editingPatternSelectedProblems.includes(p.id) && p.difficulty === "MEDIUM").length} Medium •{" "}
+                          {problems.filter(p => editingPatternSelectedProblems.includes(p.id) && p.difficulty === "HARD").length} Hard
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingPatternSelectedProblems(problems.map((p) => p.id))}
+                          className="text-[10px] h-6 px-2 text-primary"
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingPatternSelectedProblems([])}
+                          className="text-[10px] h-6 px-2 text-muted-foreground"
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <Input
+                        placeholder="Filter problems by title or platform..."
+                        value={modalProblemSearch}
+                        onChange={(e) => setModalProblemSearch(e.target.value)}
+                        className="pl-7 text-[11px] h-7 bg-background"
+                      />
                     </div>
 
                     <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-background divide-y divide-border/60">
-                      {problems.length > 0 ? (
-                        problems.map((prob) => {
-                          const isChecked = editingPatternSelectedProblems.includes(prob.id);
-                          return (
-                            <label
-                              key={prob.id}
-                              className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditingPatternSelectedProblems((prev) => [...prev, prob.id]);
-                                    } else {
-                                      setEditingPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
-                                    }
-                                  }}
-                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
-                                />
-                                <span className="font-semibold text-foreground truncate">{prob.title}</span>
-                                <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
-                                  {prob.difficulty}
-                                </Badge>
-                              </div>
-                              <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
-                            </label>
-                          );
-                        })
+                      {problems.filter(p => modalProblemSearch ? p.title.toLowerCase().includes(modalProblemSearch.toLowerCase()) || (p.platform || "").toLowerCase().includes(modalProblemSearch.toLowerCase()) : true).length > 0 ? (
+                        problems
+                          .filter(p => modalProblemSearch ? p.title.toLowerCase().includes(modalProblemSearch.toLowerCase()) || (p.platform || "").toLowerCase().includes(modalProblemSearch.toLowerCase()) : true)
+                          .map((prob) => {
+                            const isChecked = editingPatternSelectedProblems.includes(prob.id);
+                            return (
+                              <label
+                                key={prob.id}
+                                className="flex items-center justify-between p-2.5 hover:bg-muted/30 cursor-pointer select-none text-xs"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditingPatternSelectedProblems((prev) => [...prev, prob.id]);
+                                      } else {
+                                        setEditingPatternSelectedProblems((prev) => prev.filter((id) => id !== prob.id));
+                                      }
+                                    }}
+                                    className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                                  />
+                                  <span className="font-semibold text-foreground truncate">{prob.title}</span>
+                                  <Badge variant={prob.difficulty === "EASY" ? "easy" : "medium"} className="text-[10px]">
+                                    {prob.difficulty}
+                                  </Badge>
+                                </div>
+                                <span className="text-[11px] font-mono text-muted-foreground shrink-0">{prob.platform || "LeetCode"}</span>
+                              </label>
+                            );
+                          })
                       ) : (
                         <div className="p-4 text-center text-xs text-muted-foreground">
-                          No problems available in database. Create problems in Problems tab first.
+                          {modalProblemSearch ? "No problems matching filter." : "No problems available in database. Create problems in Problems tab first."}
                         </div>
                       )}
                     </div>

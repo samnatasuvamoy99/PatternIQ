@@ -43,13 +43,61 @@ export async function getPatternBySlug(slug: string, userId?: string) {
   if (!pattern) throw ApiError.notFound("Pattern not found");
 
   let userProgress = null;
+  const userProblemProgressMap: Record<string, string> = {};
+
   if (userId) {
     userProgress = await prisma.userPatternProgress.findUnique({
       where: { userId_patternId: { userId, patternId: pattern.id } },
     });
+
+    const problemIds = pattern.problems.map((p) => p.problemId);
+    if (problemIds.length > 0) {
+      const problemProgressList = await prisma.userProblemProgress.findMany({
+        where: { userId, problemId: { in: problemIds } },
+      });
+      problemProgressList.forEach((pp) => {
+        userProblemProgressMap[pp.problemId] = pp.status;
+      });
+    }
   }
 
-  return { ...pattern, userProgress };
+  const mappedProblems = pattern.problems.map((p) => ({
+    ...p,
+    problem: {
+      ...p.problem,
+      status: userProblemProgressMap[p.problemId] || "NOT_ATTEMPTED",
+    },
+  }));
+
+  const totalProblems = mappedProblems.length;
+  const solvedProblems = mappedProblems.filter(
+    (p) => userProblemProgressMap[p.problemId] === "SOLVED"
+  ).length;
+  const easyProblems = mappedProblems.filter((p) => p.problem?.difficulty === "EASY");
+  const mediumProblems = mappedProblems.filter((p) => p.problem?.difficulty === "MEDIUM");
+  const hardProblems = mappedProblems.filter((p) => p.problem?.difficulty === "HARD");
+
+  const coverage = {
+    totalProblems,
+    solvedProblems,
+    percentage: totalProblems > 0 ? Math.round((solvedProblems / totalProblems) * 100) : 0,
+    breakdown: {
+      easy: {
+        total: easyProblems.length,
+        solved: easyProblems.filter((p) => userProblemProgressMap[p.problemId] === "SOLVED").length,
+      },
+      medium: {
+        total: mediumProblems.length,
+        solved: mediumProblems.filter((p) => userProblemProgressMap[p.problemId] === "SOLVED").length,
+      },
+      hard: {
+        total: hardProblems.length,
+        solved: hardProblems.filter((p) => userProblemProgressMap[p.problemId] === "SOLVED").length,
+      },
+    },
+  };
+
+  return { ...pattern, problems: mappedProblems, userProgress, coverage };
 }
 
 // ---- Admin ----
