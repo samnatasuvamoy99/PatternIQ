@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { ArrowLeft, Send, Eye, PenSquare, Loader2 } from "lucide-react";
-import { FormattedTextarea } from "@/components/ui/formatted-textarea";
-import { FormattedText } from "@/components/ui/formatted-text";
+import { FormattedTextarea, FormattedText } from "@/components/text-service-engine";
 import { apiClient } from "@/lib/api-client";
 
 const CATEGORIES = [

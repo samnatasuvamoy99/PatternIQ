@@ -4,6 +4,8 @@ import { ApiError } from "./errors";
 import { fail } from "./api-response";
 import { AuthContext, getAuthContext } from "./auth";
 
+import { prisma } from "./prisma";
+
 type RouteContext<P = Record<string, string>> = { params: P };
 
 type Handler<P> = (
@@ -12,26 +14,51 @@ type Handler<P> = (
 ) => Promise<Response>;
 
 /**
- * Wraps a route handler with centralized error handling and
- * standardized response formatting. Mirrors the role of
- * `error.middleware.ts` in the Express version of this backend.
+ * Wraps a route handler with centralized error handling, retry resilience
+ * for transient database connection pool wakeups, and standardized response formatting.
  */
 export function apiHandler<P = Record<string, string>>(handler: Handler<P>) {
   return async (req: NextRequest, ctx: RouteContext<P>) => {
-    try {
-      const auth = await getAuthContext(req);
-      return await handler(req, { ...ctx, auth });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        return fail(err.statusCode, err.code, err.message);
+    const maxRetries = 2;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const auth = await getAuthContext(req);
+        return await handler(req, { ...ctx, auth });
+      } catch (err: unknown) {
+        // Detect transient connection drop / cold-start pool timeout from serverless Neon PostgreSQL
+        const isTransientDbError =
+          typeof err === "object" &&
+          err !== null &&
+          (("code" in err && (err.code === "P1017" || err.code === "P1001" || err.code === "P1008" || err.code === "P2024")) ||
+            ("message" in err &&
+              typeof (err as { message: string }).message === "string" &&
+              ((err as { message: string }).message.includes("Server has closed the connection") ||
+                (err as { message: string }).message.includes("connection pool timeout"))));
+
+        if (isTransientDbError && attempt < maxRetries - 1) {
+          console.warn(`[PRISMA RESILIENCE] Transient DB connection drop. Reconnecting & retrying (attempt ${attempt + 1})...`);
+          try {
+            await prisma.$disconnect();
+            await prisma.$connect();
+          } catch {
+            // Ignore reconnect error on retry loop
+          }
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          continue;
+        }
+
+        if (err instanceof ApiError) {
+          return fail(err.statusCode, err.code, err.message);
+        }
+        if (err instanceof ZodError) {
+          const message = err.errors.map((e) => e.message).join(", ");
+          return fail(400, "VALIDATION_ERROR", message);
+        }
+        console.error("[API ERROR]", err);
+        return fail(500, "INTERNAL_ERROR", "Something went wrong");
       }
-      if (err instanceof ZodError) {
-        const message = err.errors.map((e) => e.message).join(", ");
-        return fail(400, "VALIDATION_ERROR", message);
-      }
-      console.error("[API ERROR]", err);
-      return fail(500, "INTERNAL_ERROR", "Something went wrong");
     }
+    return fail(500, "INTERNAL_ERROR", "Request timed out");
   };
 }
 

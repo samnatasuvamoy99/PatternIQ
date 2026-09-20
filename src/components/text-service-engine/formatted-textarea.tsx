@@ -24,9 +24,10 @@ import {
   Link as LinkIcon,
   Check,
   ImageOff,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FormattedText } from "@/components/ui/formatted-text";
+import { FormattedText } from "./formatted-text";
 import { cn, cleanLatexMath } from "@/lib/utils";
 import { normalizeImageUrl, isRawImageUrl } from "@/lib/image-url";
 
@@ -44,7 +45,21 @@ interface FormattedTextareaProps {
 
 // ─── Smart Format Engine ────────────────────────────────────────────────────
 // Detects patterns in raw pasted or typed text (including column-wise tables,
-// step traces, and inline headers) and auto-converts to clean Markdown structures.
+// step traces, problem links, and inline headers) and auto-converts to clean Markdown structures.
+
+export function getPlatformNameFromUrl(url: string): string {
+  if (!url) return "";
+  const lower = url.toLowerCase();
+  if (lower.includes("leetcode.com")) return "LeetCode";
+  if (lower.includes("geeksforgeeks.org")) return "GeeksforGeeks";
+  if (lower.includes("takeuforward.org")) return "TakeUForward";
+  if (lower.includes("codeforces.com")) return "Codeforces";
+  if (lower.includes("hackerrank.com")) return "HackerRank";
+  if (lower.includes("neetcode.io")) return "NeetCode";
+  if (lower.includes("github.com")) return "GitHub";
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "YouTube";
+  return "";
+}
 
 function detectHasAutoFormattable(text: string): boolean {
   if (!text) return false;
@@ -61,8 +76,11 @@ function detectHasAutoFormattable(text: string): boolean {
       !/^(Step\s+\d+|Phase\s+\d+|Pass\s+\d+|Iteration\s+\d+)\s*:/i.test(l.trim())
   );
   const hasNumberedList = lines.some((l) => /^\d+[.)]\s+\S/.test(l.trim()));
+  const hasUnformattedUrlLines = lines.some(
+    (l) => /(?:https?:\/\/|www\.)\S+/i.test(l) && !/\[.*?\]\(.*?\)/.test(l)
+  );
   
-  return hasInlineSteps || hasTabularData || hasArrowLines || hasNumberedList;
+  return hasInlineSteps || hasTabularData || hasArrowLines || hasNumberedList || hasUnformattedUrlLines;
 }
 
 function autoFormatText(text: string): string {
@@ -130,6 +148,26 @@ function autoFormatText(text: string): string {
     if (!trimmed) {
       stepCounter = 1;
       result.push(line);
+      continue;
+    }
+
+    // Auto-detect problem lines with URLs (e.g. "[ ] Product of Array Except Self - https://leetcode.com/problems/..." or "Product: https://...")
+    const rawUrlLineMatch = trimmed.match(/^([-*]?\s*\[[ xX]\]|\d+[.)]|-|\*)?\s*(.*?)(?::|—|–|-|\s{2,})\s*(https?:\/\/\S+)$/i);
+    if (rawUrlLineMatch && !trimmed.includes("![") && !trimmed.includes("```") && !trimmed.includes("](") ) {
+      const prefixMarker = rawUrlLineMatch[1] || "";
+      const rawTitle = rawUrlLineMatch[2].trim();
+      const rawUrl = rawUrlLineMatch[3].trim();
+      const platform = getPlatformNameFromUrl(rawUrl);
+      const cleanTitle = rawTitle.replace(/^[-*•\s]+/, "").trim();
+      const finalTitle = cleanTitle || platform || "Problem Link";
+      
+      let platformSuffix = "";
+      if (platform && !finalTitle.toLowerCase().includes(platform.toLowerCase())) {
+        platformSuffix = ` — ${platform}`;
+      }
+
+      const checkPrefix = prefixMarker.includes("[") ? `${prefixMarker.trim()} ` : prefixMarker ? `${prefixMarker.trim()} ` : "[ ] ";
+      result.push(`${checkPrefix}[${finalTitle}](${rawUrl})${platformSuffix}`);
       continue;
     }
 
@@ -330,6 +368,14 @@ export function FormattedTextarea({
   const [extractedWebImages, setExtractedWebImages] = useState<string[]>([]);
   const [isExtractingWebImages, setIsExtractingWebImages] = useState(false);
   const [extractedPageTitle, setExtractedPageTitle] = useState("");
+  
+  // Link insertion state
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [isChecklistLink, setIsChecklistLink] = useState(true);
+  const [linkPlatform, setLinkPlatform] = useState("");
+
   const [toast, setToast] = useState<"applied" | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diagramPresets = getRelevantDiagramPresets(category);
@@ -339,6 +385,83 @@ export function FormattedTextarea({
     setToast(type);
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
+
+  const handleOpenLinkModal = () => {
+    const textarea = textareaRef.current;
+    let selected = "";
+    let lineHasChecklist = false;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      selected = value.substring(start, end).trim();
+      
+      const lastNewline = value.lastIndexOf("\n", start - 1);
+      const currentLine = value.substring(lastNewline + 1, start);
+      lineHasChecklist = currentLine.trim().startsWith("[ ]") || currentLine.trim().startsWith("- [ ]") || currentLine.trim().startsWith("[x]");
+    }
+    setLinkTitle(selected);
+    setLinkUrl("");
+    // If text was selected or line already has checklist box, don't duplicate [ ]
+    setIsChecklistLink(selected.length === 0 && !lineHasChecklist);
+    setLinkPlatform("");
+    setShowLinkInput(true);
+    setShowImageUrlInput(false);
+  };
+
+  const handleInsertLink = (customTitle?: string, customUrl?: string, customChecklist?: boolean, customPlatform?: string) => {
+    const textarea = textareaRef.current;
+    const titleVal = (customTitle !== undefined ? customTitle : linkTitle).trim();
+    let urlVal = (customUrl !== undefined ? customUrl : linkUrl).trim();
+    const asChecklist = customChecklist !== undefined ? customChecklist : isChecklistLink;
+    const platformVal = customPlatform !== undefined ? customPlatform : linkPlatform;
+
+    if (!urlVal) return;
+
+    if (!/^https?:\/\//i.test(urlVal) && !urlVal.startsWith("/")) {
+      urlVal = `https://${urlVal}`;
+    }
+
+    const detectedPlatform = platformVal || getPlatformNameFromUrl(urlVal);
+    const finalTitle = titleVal || detectedPlatform || "Problem Link";
+
+    let mdLink = `[${finalTitle}](${urlVal})`;
+    if (detectedPlatform && !finalTitle.toLowerCase().includes(detectedPlatform.toLowerCase())) {
+      mdLink = `${mdLink} — ${detectedPlatform}`;
+    }
+
+    if (!textarea) {
+      const inserted = asChecklist ? `[ ] ${mdLink}` : mdLink;
+      onChange(value ? `${value}\n${inserted}` : inserted);
+      setShowLinkInput(false);
+      setLinkTitle("");
+      setLinkUrl("");
+      setLinkPlatform("");
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const isReplacingSelection = start !== end && titleVal.length > 0;
+
+    let fullInsertion = mdLink;
+    if (asChecklist && !isReplacingSelection) {
+      const isLineStart = start === 0 || value[start - 1] === "\n";
+      const prefix = isLineStart ? "" : "\n";
+      fullInsertion = `${prefix}[ ] ${mdLink}\n`;
+    }
+
+    const newValue = value.substring(0, start) + fullInsertion + value.substring(end);
+    onChange(newValue);
+    setShowLinkInput(false);
+    setLinkTitle("");
+    setLinkUrl("");
+    setLinkPlatform("");
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + fullInsertion.length, start + fullInsertion.length);
+    }, 10);
+  };
 
   // ── Format helpers ──────────────────────────────────────────────────────
   const applyFormat = (prefix: string, suffix: string = "") => {
@@ -703,10 +826,35 @@ export function FormattedTextarea({
       pasted = cleanLatexMath(pasted);
     }
 
+    // If user highlighted text in textarea and pasted a URL, wrap selection into [Selected Text](url)
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = value.substring(start, end).trim();
+
+      if (selected.length > 0 && /^https?:\/\/\S+$/i.test(pasted.trim())) {
+        e.preventDefault();
+        const cleanUrl = pasted.trim();
+        const detectedPlatform = getPlatformNameFromUrl(cleanUrl);
+        let markdownLink = `[${selected}](${cleanUrl})`;
+        if (detectedPlatform && !selected.toLowerCase().includes(detectedPlatform.toLowerCase())) {
+          markdownLink = `${markdownLink} — ${detectedPlatform}`;
+        }
+        const newValue = value.substring(0, start) + markdownLink + value.substring(end);
+        onChange(newValue);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + markdownLink.length, start + markdownLink.length);
+        }, 10);
+        showToast("applied");
+        return;
+      }
+    }
+
     if (hasLatex || detectHasAutoFormattable(pasted)) {
       e.preventDefault();
       const formatted = detectHasAutoFormattable(pasted) ? autoFormatText(pasted) : pasted;
-      const textarea = textareaRef.current;
       if (!textarea) return;
 
       const start = textarea.selectionStart;
@@ -1033,6 +1181,176 @@ export function FormattedTextarea({
         </div>
       )}
 
+      {/* ── Rich Link / Problem Insertion Panel ── */}
+      {showLinkInput && (
+        <div className="rounded-2xl border border-emerald-500/40 bg-card p-4 text-xs space-y-3.5 shadow-lg animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-border pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-500">
+                <LinkIcon className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-bold text-foreground text-xs">Insert Problem Link / Web Resource</span>
+                <p className="text-[10px] text-muted-foreground">
+                  Attach LeetCode, GFG, TakeUForward problems or any documentation link
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowLinkInput(false);
+                setLinkTitle("");
+                setLinkUrl("");
+                setLinkPlatform("");
+              }}
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-foreground">
+                  Problem / Link Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Product of Array Except Self"
+                  value={linkTitle}
+                  onChange={(e) => setLinkTitle(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-foreground">
+                  Target URL <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://leetcode.com/problems/..."
+                  value={linkUrl}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLinkUrl(val);
+                    if (!linkTitle) {
+                      const detected = getPlatformNameFromUrl(val);
+                      if (detected) setLinkPlatform(detected);
+                    }
+                  }}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            {/* Quick Platform Presets */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Quick Platform Shortcuts:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { name: "LeetCode", base: "https://leetcode.com/problems/", color: "hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+                  { name: "GeeksforGeeks", base: "https://www.geeksforgeeks.org/problems/", color: "hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+                  { name: "TakeUForward", base: "https://takeuforward.org/", color: "hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+                  { name: "NeetCode", base: "https://neetcode.io/problems/", color: "hover:border-violet-500/50 hover:bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+                  { name: "Codeforces", base: "https://codeforces.com/", color: "hover:border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+                  { name: "YouTube", base: "https://youtube.com/", color: "hover:border-red-500/50 hover:bg-red-500/10 text-red-600 dark:text-red-400" },
+                  { name: "GitHub", base: "https://github.com/", color: "hover:border-slate-500/50 hover:bg-slate-500/10 text-slate-600 dark:text-slate-300" },
+                ].map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => {
+                      setLinkPlatform(p.name);
+                      if (!linkUrl) {
+                        setLinkUrl(p.base);
+                      }
+                    }}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-[10.5px] font-mono font-medium border border-border bg-muted/40 transition-colors cursor-pointer",
+                      p.color,
+                      linkPlatform === p.name && "border-primary ring-1 ring-primary bg-primary/10"
+                    )}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Checklist Mode Option */}
+            <div className="flex items-center gap-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-[11px] text-foreground font-medium select-none">
+                <input
+                  type="checkbox"
+                  checked={isChecklistLink}
+                  onChange={(e) => setIsChecklistLink(e.target.checked)}
+                  className="rounded border-border text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                />
+                <span>Format as Problem Coverage checklist item (<code className="text-[10px] font-mono bg-muted px-1 rounded">[ ] [Title](url) — Platform</code>)</span>
+              </label>
+            </div>
+
+            {/* Live Link Preview inside modal */}
+            {linkUrl.trim() && (
+              <div className="p-2.5 rounded-xl border border-border bg-muted/20 space-y-1">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                  Link Live Preview:
+                </span>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-card border border-border/80 text-xs">
+                  {isChecklistLink && (
+                    <div className="h-4 w-4 rounded border border-primary/50 flex items-center justify-center shrink-0">
+                      <div className="h-1.5 w-1.5 rounded-xs bg-primary/60" />
+                    </div>
+                  )}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/40">
+                    {linkTitle.trim() || linkPlatform || "Problem Link"}
+                  </span>
+                  {(linkPlatform || getPlatformNameFromUrl(linkUrl)) && (
+                    <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded border uppercase font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      {linkPlatform || getPlatformNameFromUrl(linkUrl)}
+                    </span>
+                  )}
+                  <ExternalLink className="h-3 w-3 text-emerald-500 ml-auto shrink-0" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowLinkInput(false);
+                setLinkTitle("");
+                setLinkUrl("");
+                setLinkPlatform("");
+              }}
+              className="h-8 text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!linkUrl.trim()}
+              onClick={() => handleInsertLink()}
+              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 cursor-pointer"
+            >
+              <Check className="h-3.5 w-3.5" />
+              <span>Insert Link</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card overflow-hidden transition-all focus-within:ring-1 focus-within:ring-ring">
         {/* ── Toolbar ── */}
         <div className="flex items-center justify-between gap-1 p-1.5 border-b border-border bg-muted/40 text-xs">
@@ -1126,12 +1444,26 @@ export function FormattedTextarea({
             {/* + Picture / Image */}
             <button
               type="button"
-              onClick={() => setShowImageUrlInput(!showImageUrlInput)}
+              onClick={() => {
+                setShowImageUrlInput(!showImageUrlInput);
+                setShowLinkInput(false);
+              }}
               title="Insert picture or image link"
               className="p-1 px-2 rounded hover:bg-emerald-500/20 text-emerald-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
             >
               <ImageIcon className="h-3.5 w-3.5" />
               <span>+ Picture</span>
+            </button>
+
+            {/* + Link / Problem Link */}
+            <button
+              type="button"
+              onClick={handleOpenLinkModal}
+              title="Insert problem link or external resource ([Title](url))"
+              className="p-1 px-2 rounded hover:bg-emerald-500/20 text-emerald-400 font-semibold transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+            >
+              <LinkIcon className="h-3.5 w-3.5" />
+              <span>+ Link</span>
             </button>
 
             {/* + Step Card */}

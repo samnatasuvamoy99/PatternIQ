@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
+import { MermaidDiagram } from "./mermaid-diagram";
 import { normalizeImageUrl, getFallbackImageUrls, isRawImageUrl } from "@/lib/image-url";
 import {
   ArrowRight,
@@ -20,6 +20,8 @@ import {
   ExternalLink,
   RefreshCw,
   ImageOff,
+  Check,
+  Target,
 } from "lucide-react";
 
 interface FormattedTextProps {
@@ -259,11 +261,75 @@ export function FormattedText({ content, className }: FormattedTextProps) {
 
   const processedContent = normalizePastedContent(content);
 
-  // Helper to parse inline tags: **bold**, <b>bold</b>, <u>underline</u>, __underline__, *italic*, `code`, images, HTML img
+// Platform detection helper for DSA & coding problem links
+interface PlatformBadge {
+  name: string;
+  color: string;
+}
+
+function getPlatformInfo(url: string): PlatformBadge | null {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (lower.includes("leetcode.com")) {
+    return { name: "LeetCode", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" };
+  }
+  if (lower.includes("geeksforgeeks.org")) {
+    return { name: "GeeksforGeeks", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" };
+  }
+  if (lower.includes("takeuforward.org")) {
+    return { name: "TakeUForward", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30" };
+  }
+  if (lower.includes("codeforces.com")) {
+    return { name: "Codeforces", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30" };
+  }
+  if (lower.includes("hackerrank.com")) {
+    return { name: "HackerRank", color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30" };
+  }
+  if (lower.includes("neetcode.io")) {
+    return { name: "NeetCode", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30" };
+  }
+  if (lower.includes("github.com")) {
+    return { name: "GitHub", color: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30" };
+  }
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) {
+    return { name: "YouTube", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30" };
+  }
+  return null;
+}
+
+  const renderLinkNode = (href: string, text: React.ReactNode, key: string | number) => {
+    let cleanHref = href.trim();
+    if (!/^https?:\/\//i.test(cleanHref) && !cleanHref.startsWith("/") && !cleanHref.startsWith("#")) {
+      cleanHref = `https://${cleanHref}`;
+    }
+    const platform = getPlatformInfo(cleanHref);
+
+    return (
+      <a
+        key={key}
+        href={cleanHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 underline decoration-emerald-500/30 hover:decoration-emerald-500 underline-offset-2 transition-all hover:bg-emerald-500/10 px-1.5 py-0.5 rounded-md -my-0.5 group cursor-pointer"
+        title={`Open ${cleanHref} in new tab`}
+      >
+        <span className="font-semibold">{text}</span>
+        {platform && (
+          <span className={cn("text-[9px] font-mono px-1 py-0.2 rounded border uppercase font-bold shrink-0 leading-tight", platform.color)}>
+            {platform.name}
+          </span>
+        )}
+        <ExternalLink className="h-3 w-3 inline-block shrink-0 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" />
+      </a>
+    );
+  };
+
+  // Helper to parse inline tags: **bold**, <b>bold</b>, <u>underline</u>, __underline__, *italic*, `code`, images, links, HTML img/a
   const parseInline = (text: string): React.ReactNode => {
     if (!text) return null;
 
-    const regex = /(\*\*.*?\*\*|<b>.*?<\/b>|<u>.*?<\/u>|__.*?__|`.*?`|\*.*?\*|!\[.*?\]\(.*?\)|<img\s+[^>]*>)/g;
+    const regex = /(!\[[^\]\r\n]*\]\([^)\r\n]+\)|\[[^\]\r\n]+\]\([^)\r\n]+\)|<img\s+[^>]*>|<a\s+[^>]*>.*?<\/a>|\*\*[^*]+?\*\*|<b>.*?<\/b>|<u>.*?<\/u>|__.*?__|`[^`]+?`|\*[^*]+?\*|<i>.*?<\/i>|https?:\/\/[^\s<>"'\)]+)/g;
     const tokens = text.split(regex);
 
     return tokens.map((token, idx) => {
@@ -271,7 +337,7 @@ export function FormattedText({ content, className }: FormattedTextProps) {
 
       // Inline Image: ![alt](url)
       if (token.startsWith("![") && token.includes("](") && token.endsWith(")")) {
-        const altMatch = token.match(/!\[(.*?)\]\((.*?)\)/);
+        const altMatch = token.match(/!\[([^\]]*)\]\(([^)]+)\)/);
         if (altMatch) {
           const alt = altMatch[1] || "Illustration / diagram";
           const src = altMatch[2];
@@ -284,6 +350,27 @@ export function FormattedText({ content, className }: FormattedTextProps) {
               onExpand={(s, a) => setSelectedImage({ src: s, alt: a })}
             />
           );
+        }
+      }
+
+      // Markdown Link: [text](url)
+      if (token.startsWith("[") && token.includes("](") && token.endsWith(")")) {
+        const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (linkMatch) {
+          const linkLabel = linkMatch[1];
+          const linkUrl = linkMatch[2];
+          return renderLinkNode(linkUrl, parseInline(linkLabel), `inline-md-link-${idx}`);
+        }
+      }
+
+      // Inline HTML Link: <a href="..." ...>text</a>
+      if (token.startsWith("<a") && token.endsWith("</a>")) {
+        const hrefMatch = token.match(/href=["'](.*?)["']/i);
+        const textMatch = token.match(/>(.*?)<\/a>/i);
+        if (hrefMatch && hrefMatch[1]) {
+          const linkUrl = hrefMatch[1];
+          const linkLabel = textMatch && textMatch[1] ? textMatch[1] : linkUrl;
+          return renderLinkNode(linkUrl, parseInline(linkLabel), `inline-html-link-${idx}`);
         }
       }
 
@@ -306,11 +393,23 @@ export function FormattedText({ content, className }: FormattedTextProps) {
         }
       }
 
+      // Raw URL: https://... or http://...
+      if (/^https?:\/\//i.test(token)) {
+        const cleanUrl = token.replace(/[\.,\)]+$/, "");
+        const trailingPunct = token.slice(cleanUrl.length);
+        return (
+          <React.Fragment key={`raw-url-${idx}`}>
+            {renderLinkNode(cleanUrl, cleanUrl, `inline-raw-url-${idx}`)}
+            {trailingPunct}
+          </React.Fragment>
+        );
+      }
+
       // Bold: **text** or <b>text</b>
       if ((token.startsWith("**") && token.endsWith("**")) || (token.startsWith("<b>") && token.endsWith("</b>"))) {
         const inner = token.startsWith("**") ? token.slice(2, -2) : token.slice(3, -4);
         return (
-          <strong key={idx} className="font-bold text-foreground">
+          <strong key={idx} className="font-bold text-amber-600 dark:text-foreground">
             {parseInline(inner)}
           </strong>
         );
@@ -342,9 +441,12 @@ export function FormattedText({ content, className }: FormattedTextProps) {
         );
       }
 
-      // Italic: *text* (excluding **)
-      if (token.startsWith("*") && token.endsWith("*") && !token.startsWith("**")) {
-        const inner = token.slice(1, -1);
+      // Italic: *text* or <i>text</i> (excluding **)
+      if (
+        (token.startsWith("*") && token.endsWith("*") && !token.startsWith("**")) ||
+        (token.startsWith("<i>") && token.endsWith("</i>"))
+      ) {
+        const inner = token.startsWith("<i>") ? token.slice(3, -4) : token.slice(1, -1);
         return (
           <em key={idx} className="italic text-foreground/90 font-medium">
             {parseInline(inner)}
@@ -594,6 +696,224 @@ export function FormattedText({ content, className }: FormattedTextProps) {
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
           <Sparkles className="h-3.5 w-3.5 text-primary/60" />
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+        </div>
+      );
+    }
+
+    // Check for standalone problem link line: [Title](url) or [Title — Platform](url)
+    const standaloneLinkMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/i);
+    if (standaloneLinkMatch) {
+      const fullLabel = standaloneLinkMatch[1].trim();
+      const linkUrl = standaloneLinkMatch[2].trim();
+      const platform = getPlatformInfo(linkUrl);
+
+      let cleanTitle = fullLabel;
+      if (platform && fullLabel.includes("—")) {
+        const parts = fullLabel.split("—");
+        if (parts.length === 2) cleanTitle = parts[0].trim();
+      } else if (platform && fullLabel.includes("-")) {
+        const parts = fullLabel.split("-");
+        if (parts.length === 2 && (parts[1].trim().toLowerCase() === "gfg" || parts[1].trim().toLowerCase() === "leetcode")) {
+          cleanTitle = parts[0].trim();
+        }
+      }
+
+      return (
+        <div
+          key={`problem-card-${index}`}
+          className="group/item flex items-center justify-between gap-3 my-2 p-2.5 sm:p-3 rounded-xl border border-border/80 bg-card/90 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="h-5 w-5 rounded-md border border-primary/40 bg-background/80 flex items-center justify-center shrink-0">
+              <div className="h-1.5 w-1.5 rounded-xs bg-primary/60" />
+            </div>
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="font-semibold text-xs sm:text-sm text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 truncate hover:underline transition-colors cursor-pointer"
+            >
+              {cleanTitle}
+            </a>
+            {platform && (
+              <span className={cn("text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase font-bold shrink-0", platform.color)}>
+                {platform.name}
+              </span>
+            )}
+          </div>
+          <a
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all shrink-0 cursor-pointer group-hover/item:scale-102"
+          >
+            <span>Solve</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      );
+    }
+
+    // Check for task checklist "[ ] ", "[x] ", "- [ ] ", "- [x] "
+    const taskMatch = trimmed.match(/^[-*]?\s*\[([ xX])\]\s*(.*)/);
+    if (taskMatch) {
+      const isChecked = taskMatch[1].toLowerCase() === "x";
+      const taskText = taskMatch[2].trim();
+
+      // Check if taskText contains a markdown link [Title](url)
+      const mdLinkMatch = taskText.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)(?:\s*(?:—|–|-)\s*(.*))?$/i);
+      // Check if taskText is formatted with raw URL: Title - https://... or Title: https://...
+      const rawUrlTaskMatch = !mdLinkMatch && taskText.match(/^(.*?)(?:\s*(?:—|–|-|:)\s*|\s+\()(?=https?:\/\/)(https?:\/\/\S+?)\)?(?:\s*(?:—|–|-)\s*(.*))?$/i);
+
+      if (mdLinkMatch) {
+        const fullTitle = mdLinkMatch[1].trim();
+        const linkUrl = mdLinkMatch[2].trim();
+        const extraPlatform = mdLinkMatch[3]?.trim();
+        const platform = getPlatformInfo(linkUrl);
+
+        let cleanTitle = fullTitle;
+        if (platform && fullTitle.includes("—")) {
+          const parts = fullTitle.split("—");
+          if (parts.length === 2) cleanTitle = parts[0].trim();
+        }
+
+        return (
+          <div
+            key={`task-item-${index}`}
+            className={cn(
+              "group/item flex items-center justify-between gap-3 my-2 p-2.5 sm:p-3 rounded-xl border transition-all duration-200",
+              isChecked
+                ? "bg-emerald-500/10 border-emerald-500/30 text-foreground/80"
+                : "bg-card/90 border-border/80 hover:border-emerald-500/50 hover:bg-emerald-500/5 shadow-xs"
+            )}
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div
+                className={cn(
+                  "flex h-5 w-5 items-center justify-center rounded-md border shrink-0 shadow-2xs transition-colors",
+                  isChecked
+                    ? "bg-emerald-500 border-emerald-600 text-white"
+                    : "border-primary/50 bg-background/80 text-primary"
+                )}
+              >
+                {isChecked ? <Check className="h-3.5 w-3.5" /> : <div className="h-1.5 w-1.5 rounded-xs bg-primary/60" />}
+              </div>
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "font-semibold text-xs sm:text-sm text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 truncate hover:underline transition-colors cursor-pointer",
+                  isChecked && "line-through text-muted-foreground"
+                )}
+              >
+                {cleanTitle}
+              </a>
+              {(platform || extraPlatform) && (
+                <span className={cn("text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase font-bold shrink-0", platform ? platform.color : "bg-muted text-muted-foreground border-border")}>
+                  {platform ? platform.name : extraPlatform}
+                </span>
+              )}
+            </div>
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all shrink-0 cursor-pointer group-hover/item:scale-102"
+            >
+              <span>Solve</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        );
+      }
+
+      if (rawUrlTaskMatch) {
+        const title = rawUrlTaskMatch[1].trim() || "Problem Link";
+        const linkUrl = rawUrlTaskMatch[2].trim();
+        const extraPlatform = rawUrlTaskMatch[3]?.trim();
+        const platform = getPlatformInfo(linkUrl);
+
+        return (
+          <div
+            key={`task-item-${index}`}
+            className={cn(
+              "group/item flex items-center justify-between gap-3 my-2 p-2.5 sm:p-3 rounded-xl border transition-all duration-200",
+              isChecked
+                ? "bg-emerald-500/10 border-emerald-500/30 text-foreground/80"
+                : "bg-card/90 border-border/80 hover:border-emerald-500/50 hover:bg-emerald-500/5 shadow-xs"
+            )}
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div
+                className={cn(
+                  "flex h-5 w-5 items-center justify-center rounded-md border shrink-0 shadow-2xs transition-colors",
+                  isChecked
+                    ? "bg-emerald-500 border-emerald-600 text-white"
+                    : "border-primary/50 bg-background/80 text-primary"
+                )}
+              >
+                {isChecked ? <Check className="h-3.5 w-3.5" /> : <div className="h-1.5 w-1.5 rounded-xs bg-primary/60" />}
+              </div>
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "font-semibold text-xs sm:text-sm text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 truncate hover:underline transition-colors cursor-pointer",
+                  isChecked && "line-through text-muted-foreground"
+                )}
+              >
+                {title}
+              </a>
+              {(platform || extraPlatform) && (
+                <span className={cn("text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase font-bold shrink-0", platform ? platform.color : "bg-muted text-muted-foreground border-border")}>
+                  {platform ? platform.name : extraPlatform}
+                </span>
+              )}
+            </div>
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all shrink-0 cursor-pointer group-hover/item:scale-102"
+            >
+              <span>Solve</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        );
+      }
+
+      return (
+        <div
+          key={`task-item-${index}`}
+          className={cn(
+            "flex items-start gap-3 my-2 p-2.5 rounded-xl border transition-all duration-200 group/task",
+            isChecked
+              ? "bg-emerald-500/10 border-emerald-500/30 text-foreground/80"
+              : "bg-card/80 border-border/80 hover:border-emerald-500/40 hover:bg-muted/30"
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded-md border shrink-0 mt-0.5 shadow-2xs transition-colors",
+              isChecked
+                ? "bg-emerald-500 border-emerald-600 text-white"
+                : "border-primary/50 bg-background/80 text-primary group-hover/task:border-emerald-500"
+            )}
+          >
+            {isChecked ? <Check className="h-3.5 w-3.5" /> : <div className="h-1.5 w-1.5 rounded-xs bg-primary/60" />}
+          </div>
+          <div className={cn("flex-1 text-xs sm:text-sm leading-relaxed", isChecked && "line-through text-muted-foreground")}>
+            {parseInline(taskText)}
+          </div>
         </div>
       );
     }

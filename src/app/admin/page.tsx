@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { AdminUsersTab } from "@/components/admin/admin-users-tab";
-import { FormattedTextarea } from "@/components/ui/formatted-textarea";
+import { FormattedTextarea } from "@/components/text-service-engine";
 import { TopicFillInput } from "@/components/admin/topic-fill-input";
 import {
   Shield,
@@ -2429,7 +2429,7 @@ export default function AdminPage() {
                     <FormattedTextarea
                       value={newPatternCoreIdea}
                       onChange={setNewPatternCoreIdea}
-                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] Product of Array Except Self — LeetCode\n[ ] Trapping Rain Water — GeeksforGeeks\n[ ] Leaders in an Array problem — TakeUForward`}
+                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] [Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) — LeetCode\n[ ] [Trapping Rain Water](https://www.geeksforgeeks.org/problems/trapping-rain-water-1587115621/1/) — GeeksforGeeks\n[ ] [Leaders in an Array problem](https://takeuforward.org/data-structure/leaders-in-an-array/) — TakeUForward`}
                       rows={5}
                     />
                   </div>
@@ -2794,7 +2794,7 @@ export default function AdminPage() {
                     <FormattedTextarea
                       value={editingPattern.coreIdea || ""}
                       onChange={(val) => setEditingPattern({ ...editingPattern, coreIdea: val })}
-                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] Product of Array Except Self — LeetCode\n[ ] Trapping Rain Water — GeeksforGeeks\n[ ] Leaders in an Array problem — TakeUForward`}
+                      placeholder={`Explain how many & which questions can be solved using this pattern, e.g.:\nThe strongest common idea here is accumulating information from both boundaries simultaneously.\n\n[ ] [Product of Array Except Self](https://leetcode.com/problems/product-of-array-except-self/) — LeetCode\n[ ] [Trapping Rain Water](https://www.geeksforgeeks.org/problems/trapping-rain-water-1587115621/1/) — GeeksforGeeks\n[ ] [Leaders in an Array problem](https://takeuforward.org/data-structure/leaders-in-an-array/) — TakeUForward`}
                       rows={5}
                     />
                   </div>

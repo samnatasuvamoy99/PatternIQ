@@ -19,7 +19,7 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
-import { FormattedText } from "@/components/ui/formatted-text";
+import { FormattedText } from "@/components/text-service-engine";
 
 interface CommentItem {
   id: string;

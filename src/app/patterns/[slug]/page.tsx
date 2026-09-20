@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { CodeViewer } from "@/components/ui/code-viewer";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { FormattedText } from "@/components/ui/formatted-text";
+import { FormattedText } from "@/components/text-service-engine";
 import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import {

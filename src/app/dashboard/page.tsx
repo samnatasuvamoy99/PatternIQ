@@ -155,79 +155,79 @@ export default function DashboardPage() {
             {/* METRIC CARDS ROW */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {/* Streak */}
-              <Card className="p-5 border-amber-500/20 bg-gradient-to-br from-card to-amber-500/5">
+              <Card className="glossy-card p-5 border-amber-500/30 bg-gradient-to-br from-card via-amber-500/5 to-amber-500/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                     Learning Streak
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500">
-                    <Flame className="h-4 w-4" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/25 to-amber-600/10 text-amber-500 border border-amber-500/30 shadow-xs">
+                    <Flame className="h-4.5 w-4.5" />
                   </div>
                 </div>
-                <p className="mt-2 text-3xl font-extrabold text-foreground">
+                <p className="mt-2 text-3xl font-black text-foreground tracking-tight">
                   {data?.streak?.current ?? 0} {data?.streak?.current === 1 ? "Day" : "Days"}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Personal best: {data?.streak?.best ?? 0} {data?.streak?.best === 1 ? "day" : "days"}
+                <p className="mt-1 text-xs text-muted-foreground font-medium">
+                  Personal best: <span className="text-foreground font-semibold">{data?.streak?.best ?? 0}</span> {data?.streak?.best === 1 ? "day" : "days"}
                 </p>
               </Card>
 
               {/* Problems Solved */}
-              <Card className="p-5 border-emerald-500/20 bg-gradient-to-br from-card to-emerald-500/5">
+              <Card className="glossy-card p-5 border-emerald-500/30 bg-gradient-to-br from-card via-emerald-500/5 to-emerald-500/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                     Problems Solved
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
-                    <CheckCircle2 className="h-4 w-4" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 text-emerald-500 border border-emerald-500/30 shadow-xs">
+                    <CheckCircle2 className="h-4.5 w-4.5" />
                   </div>
                 </div>
-                <p className="mt-2 text-3xl font-extrabold text-foreground">
+                <p className="mt-2 text-3xl font-black text-foreground tracking-tight">
                   {data?.problems?.solved ?? 0}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-sm font-semibold text-muted-foreground">
                     / {data?.problems?.total ?? 0}
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {data?.problems?.percentage ?? 0}% syllabus coverage
+                <p className="mt-1 text-xs text-muted-foreground font-medium">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{data?.problems?.percentage ?? 0}%</span> syllabus coverage
                 </p>
               </Card>
 
               {/* Patterns Mastered */}
-              <Card className="p-5 border-primary/20 bg-gradient-to-br from-card to-primary/5">
+              <Card className="glossy-card p-5 border-primary/30 bg-gradient-to-br from-card via-primary/5 to-primary/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">
                     Patterns Mastered
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <Layers className="h-4 w-4" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-primary/10 text-primary border border-primary/30 shadow-xs">
+                    <Layers className="h-4.5 w-4.5" />
                   </div>
                 </div>
-                <p className="mt-2 text-3xl font-extrabold text-foreground">
+                <p className="mt-2 text-3xl font-black text-foreground tracking-tight">
                   {data?.patterns?.mastered ?? 0}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-sm font-semibold text-muted-foreground">
                     / {data?.patterns?.total ?? 0}
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {data?.patterns?.percentage ?? 0}% mastery rate
+                <p className="mt-1 text-xs text-muted-foreground font-medium">
+                  <span className="text-primary font-bold">{data?.patterns?.percentage ?? 0}%</span> mastery rate
                 </p>
               </Card>
 
               {/* Revisions Due Today */}
-              <Card className="p-5 border-blue-500/20 bg-gradient-to-br from-card to-blue-500/5">
+              <Card className="glossy-card p-5 border-indigo-500/30 bg-gradient-to-br from-card via-indigo-500/5 to-indigo-500/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                     Revisions Due
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
-                    <Repeat className="h-4 w-4" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/25 to-indigo-600/10 text-indigo-500 border border-indigo-500/30 shadow-xs">
+                    <Repeat className="h-4.5 w-4.5" />
                   </div>
                 </div>
-                <p className="mt-2 text-3xl font-extrabold text-foreground">
+                <p className="mt-2 text-3xl font-black text-foreground tracking-tight">
                   {data?.revisionsDueCount ?? 0}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Spaced repetition queue</p>
+                <p className="mt-1 text-xs text-muted-foreground font-medium">Spaced repetition queue</p>
               </Card>
             </div>
 
@@ -236,25 +236,26 @@ export default function DashboardPage() {
               {/* Left 2 Cols: Difficulty & Track Progress */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Difficulty breakdown */}
-                <Card>
+                <Card className="glossy-card">
                   <CardHeader className="pb-3">
-                    <CardTitle>Problem Solving Distribution</CardTitle>
+                    <CardTitle className="text-lg font-bold">Problem Solving Distribution</CardTitle>
                     <CardDescription>Breakdown by question difficulty level</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Easy */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
-                        <span className="text-emerald-500 font-semibold">
+                        <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                           Easy ({data?.difficulty?.easy?.solved ?? 0} / {data?.difficulty?.easy?.total ?? 0})
                         </span>
-                        <span className="text-muted-foreground">
+                        <span className="font-mono font-bold text-foreground">
                           {data?.difficulty?.easy?.percentage ?? 0}%
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden p-0.5 border border-border/50">
                         <div
-                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${data?.difficulty?.easy?.percentage ?? 0}%` }}
                         />
                       </div>
@@ -263,16 +264,17 @@ export default function DashboardPage() {
                     {/* Medium */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
-                        <span className="text-amber-500 font-semibold">
+                        <span className="text-amber-500 font-bold flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                           Medium ({data?.difficulty?.medium?.solved ?? 0} / {data?.difficulty?.medium?.total ?? 0})
                         </span>
-                        <span className="text-muted-foreground">
+                        <span className="font-mono font-bold text-foreground">
                           {data?.difficulty?.medium?.percentage ?? 0}%
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden p-0.5 border border-border/50">
                         <div
-                          className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${data?.difficulty?.medium?.percentage ?? 0}%` }}
                         />
                       </div>
@@ -281,16 +283,17 @@ export default function DashboardPage() {
                     {/* Hard */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium">
-                        <span className="text-rose-500 font-semibold">
+                        <span className="text-rose-500 font-bold flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                           Hard ({data?.difficulty?.hard?.solved ?? 0} / {data?.difficulty?.hard?.total ?? 0})
                         </span>
-                        <span className="text-muted-foreground">
+                        <span className="font-mono font-bold text-foreground">
                           {data?.difficulty?.hard?.percentage ?? 0}%
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden p-0.5 border border-border/50">
                         <div
-                          className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${data?.difficulty?.hard?.percentage ?? 0}%` }}
                         />
                       </div>
@@ -299,7 +302,7 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Active Learning Tracks */}
-                <Card>
+                <Card className="glossy-card">
                   <CardHeader className="pb-3 flex flex-row items-center justify-between">
                     <div>
                       <CardTitle>Track Progress</CardTitle>
@@ -348,14 +351,16 @@ export default function DashboardPage() {
 
               {/* Right 1 Col: Today's Due Revisions & Quick Actions */}
               <div className="space-y-6">
-                <Card className="border-primary/30">
+                <Card className="glossy-card border-primary/30 bg-gradient-to-br from-card via-primary/5 to-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
+                      <CardTitle className="text-base flex items-center gap-2 font-bold text-foreground">
                         <Sparkles className="h-4 w-4 text-primary" />
                         <span>Scheduled for Today</span>
                       </CardTitle>
-                      <Badge variant="secondary">{data?.revisionsDueCount ?? 0} Due</Badge>
+                      <Badge variant="secondary" className="font-mono font-bold bg-primary/15 text-primary border border-primary/30">
+                        {data?.revisionsDueCount ?? 0} Due
+                      </Badge>
                     </div>
                     <CardDescription>Keep the algorithms fresh in your memory</CardDescription>
                   </CardHeader>
@@ -364,24 +369,24 @@ export default function DashboardPage() {
                       data.revisions.map((rev) => (
                         <div
                           key={rev.id}
-                          className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2"
+                          className="rounded-xl border border-border/80 bg-muted/40 p-3 space-y-2 hover:border-primary/40 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-xs font-semibold text-foreground line-clamp-1">
+                            <h4 className="text-xs font-bold text-foreground line-clamp-1">
                               {rev.patternName}
                             </h4>
                             <Badge variant={rev.difficulty === "EASY" ? "easy" : "medium"}>
                               {rev.difficulty}
                             </Badge>
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
                             <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> Interval: {rev.intervalDays}d
+                              <Clock className="h-3 w-3 text-amber-500" /> Interval: {rev.intervalDays}d
                             </span>
                             <span>Rep #{rev.repetitionCount}</span>
                           </div>
                           <Link href={`/revision`}>
-                            <Button size="sm" className="w-full h-7 text-xs mt-1">
+                            <Button size="sm" className="w-full h-7 text-xs mt-1 shadow-xs">
                               Review Pattern
                             </Button>
                           </Link>
@@ -389,11 +394,11 @@ export default function DashboardPage() {
                       ))
                     ) : (
                       <div className="py-6 text-center space-y-2">
-                        <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
                           <Check className="h-5 w-5" />
                         </div>
-                        <p className="text-xs font-semibold text-foreground">All caught up!</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs font-bold text-foreground">All caught up!</p>
+                        <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                           No patterns currently due for revision. Great job staying on track!
                         </p>
                       </div>
@@ -402,27 +407,27 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Quick links card */}
-                <Card>
+                <Card className="glossy-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Quick Shortcuts</CardTitle>
+                    <CardTitle className="text-base font-bold">Quick Shortcuts</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <Link href="/patterns" className="block">
-                      <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted text-xs transition-colors">
-                        <span className="font-medium text-foreground">Browse DSA Patterns</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Link href="/patterns" className="block group">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 text-xs transition-all">
+                        <span className="font-semibold text-foreground group-hover:text-primary transition-colors">Browse DSA Patterns</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </Link>
-                    <Link href="/problems" className="block">
-                      <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted text-xs transition-colors">
-                        <span className="font-medium text-foreground">LeetCode Problem Catalog</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Link href="/problems" className="block group">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 text-xs transition-all">
+                        <span className="font-semibold text-foreground group-hover:text-primary transition-colors">LeetCode Problem Catalog</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </Link>
-                    <Link href="/articles" className="block">
-                      <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted text-xs transition-colors">
-                        <span className="font-medium text-foreground">Community Study Notes</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Link href="/articles" className="block group">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 text-xs transition-all">
+                        <span className="font-semibold text-foreground group-hover:text-primary transition-colors">Community Study Notes</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </Link>
                   </CardContent>
