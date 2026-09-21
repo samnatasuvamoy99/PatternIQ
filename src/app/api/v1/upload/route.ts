@@ -43,7 +43,7 @@ export const POST = apiHandler(async (req: NextRequest, { auth }: { auth: AuthCo
   const fileName = `${Date.now()}_${safeBaseName}${ext}`;
   const filePath = path.join(uploadsDir, fileName);
 
-  await fs.writeFile(filePath, buffer);
+  await fs.writeFile(filePath, buffer as any);
 
   const publicUrl = `/uploads/${fileName}`;
 
