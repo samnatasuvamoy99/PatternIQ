@@ -28,6 +28,15 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata = {
   title: "PatternIQ — Master DSA Patterns for Technical Interviews",
   description: "Learn Data Structures and Algorithms systematically by pattern, intuition, code templates, and automated spaced repetition.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 const THEME_INIT_SCRIPT = `
@@ -58,6 +67,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={cn("dark font-sans scroll-smooth", inter.variable, plusJakarta.variable, jetbrainsMono.variable)}
     >
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased flex flex-col selection:bg-primary/20 selection:text-primary">

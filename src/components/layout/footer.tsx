@@ -53,12 +53,16 @@ export function Footer() {
             {/* Col 1: Brand & Mission */}
             <div className="space-y-4 lg:col-span-4">
               <Link href="/" className="inline-flex items-center gap-2.5 font-bold tracking-tight text-foreground group">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-                  <Brain className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 shadow-md shadow-amber-500/20 transition-transform group-hover:scale-105 border border-amber-400/40 shrink-0">
+                  <Brain className="h-5 w-5 text-amber-950 stroke-[2.4]" />
                 </div>
-                <span className="text-2xl font-heading font-extrabold tracking-tight">
-                  Pattern<span className="text-primary font-black">IQ</span>
-                </span>
+                <div className="relative inline-flex flex-col">
+                  <span className="text-2xl font-heading font-extrabold tracking-tight">
+                    Pattern<span className="text-amber-500 font-black">IQ</span>
+                  </span>
+                  {/* Delicate Light Accent Underline */}
+                  <span className="h-[1.5px] w-full rounded-full bg-gradient-to-r from-amber-400/70 via-amber-300 to-amber-400/40 transition-all opacity-80 group-hover:opacity-100" />
+                </div>
               </Link>
 
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">

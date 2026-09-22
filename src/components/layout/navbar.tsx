@@ -65,13 +65,17 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md transition-colors">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 font-bold tracking-tight text-foreground transition-opacity hover:opacity-90">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-            <Brain className="h-5 w-5" />
+        <Link href="/" className="group flex items-center gap-2.5 font-bold tracking-tight text-foreground transition-all">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 shadow-sm border border-amber-400/40 group-hover:scale-105 transition-transform shrink-0">
+            <Brain className="h-5 w-5 text-amber-950 stroke-[2.4]" />
           </div>
-          <span className="text-xl font-heading">
-            Pattern<span className="text-primary font-black">IQ</span>
-          </span>
+          <div className="relative inline-flex flex-col">
+            <span className="text-xl font-heading tracking-tight text-foreground leading-tight">
+              Pattern<span className="text-amber-500 font-black">IQ</span>
+            </span>
+            {/* Delicate Light Accent Underline */}
+            <span className="h-[1.5px] w-full rounded-full bg-gradient-to-r from-amber-400/70 via-amber-300 to-amber-400/40 transition-all opacity-80 group-hover:opacity-100" />
+          </div>
         </Link>
 
         {/* Desktop Navigation */}
