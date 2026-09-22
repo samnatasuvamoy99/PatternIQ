@@ -24,6 +24,8 @@ export const createProblemSchema = z.object({
   externalId: z.string().max(100).optional(),
   solveUrl: solveUrlSchema,
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).optional(),
+  patternId: z.string().nullable().optional(),
+  isCore: z.boolean().optional(),
 });
 
 export const updateProblemSchema = z.object({
@@ -32,6 +34,8 @@ export const updateProblemSchema = z.object({
   externalId: z.string().max(100).nullable().optional(),
   solveUrl: solveUrlSchema.optional(),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).optional(),
+  patternId: z.string().nullable().optional(),
+  isCore: z.boolean().optional(),
 });
 
 export const attachProblemSchema = z.object({

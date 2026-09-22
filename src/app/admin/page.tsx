@@ -289,6 +289,13 @@ export default function AdminPage() {
   const [newProblemIsCore, setNewProblemIsCore] = useState(true);
   const [isSubmittingProblem, setIsSubmittingProblem] = useState(false);
 
+  // -------------------------------------------------------------
+  // FORM STATES: 3.5. EDIT PROBLEM
+  // -------------------------------------------------------------
+  const [editProblemTopicId, setEditProblemTopicId] = useState<string>("ALL");
+  const [editProblemPatternId, setEditProblemPatternId] = useState<string>("");
+  const [editProblemPatternSearch, setEditProblemPatternSearch] = useState<string>("");
+
   // In-modal success messages for continuous addition
   const [patternModalSuccess, setPatternModalSuccess] = useState<string | null>(null);
   const [problemModalSuccess, setProblemModalSuccess] = useState<string | null>(null);
@@ -334,6 +341,25 @@ export default function AdminPage() {
       setNewPatternTopicName(topicName || foundTopic?.name || "");
     }
     setShowPatternModal(true);
+  };
+
+  // Open Edit Problem Modal with existing pattern & topic pre-selected
+  const openEditProblemModal = (prob: ProblemItem) => {
+    setEditingProblem(prob);
+    const currentPatternId = prob.patterns?.[0]?.pattern?.id || "";
+    setEditProblemPatternId(currentPatternId);
+
+    if (currentPatternId) {
+      const foundPat = patterns.find((p) => p.id === currentPatternId);
+      if (foundPat) {
+        setEditProblemTopicId(foundPat.topicId || foundPat.topic?.id || "ALL");
+      } else {
+        setEditProblemTopicId("ALL");
+      }
+    } else {
+      setEditProblemTopicId("ALL");
+    }
+    setEditProblemPatternSearch("");
   };
 
   // Smart detect platform when typing / pasting URL
@@ -767,6 +793,7 @@ export default function AdminPage() {
           externalId: editingProblem.externalId?.trim() ? editingProblem.externalId.trim() : null,
           solveUrl: editingProblem.solveUrl.trim(),
           difficulty: editingProblem.difficulty,
+          patternId: editProblemPatternId || null,
         }),
       });
 
@@ -1760,7 +1787,7 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setEditingProblem(prob)}
+                          onClick={() => openEditProblemModal(prob)}
                           className="text-xs h-7 px-2.5 gap-1 cursor-pointer"
                         >
                           <Edit2 className="h-3 w-3" />
@@ -3308,137 +3335,256 @@ export default function AdminPage() {
       })()}
 
       {/* ========================================================================= */}
-      {/* 6. MODAL: EDIT PROBLEM (WITH PLATFORM CLICK SELECT & SMART URL DETECTION) */}
+      {/* 6. MODAL: EDIT PROBLEM (WITH PLATFORM CLICK SELECT & PATTERN SELECTION) */}
       {/* ========================================================================= */}
-      {editingProblem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">
-                  <Edit2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Edit Problem: {editingProblem.title}</h2>
-                  <p className="text-xs text-muted-foreground">Modify title, platform, difficulty, or external link</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingProblem(null)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      {editingProblem && (() => {
+        const editTopicPatterns = patterns.filter(
+          (p) => editProblemTopicId === "ALL" || p.topicId === editProblemTopicId || p.topic?.id === editProblemTopicId
+        );
+        const filteredEditTopicPatterns = editTopicPatterns.filter((p) => {
+          if (!editProblemPatternSearch.trim()) return true;
+          const q = editProblemPatternSearch.toLowerCase();
+          return p.name.toLowerCase().includes(q) || `#${p.number}`.includes(q);
+        });
 
-            <form onSubmit={handleUpdateProblem} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Problem Title</label>
-                <Input
-                  required
-                  value={editingProblem.title}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
-                />
-              </div>
+        const assignedPat = patterns.find((p) => p.id === editProblemPatternId);
+        const assignedTopic = assignedPat ? topics.find((t) => t.id === assignedPat.topicId || t.id === assignedPat.topic?.id) : null;
 
-              {/* Platform Quick Selection Pills */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-foreground">Platform</label>
-                  <span className="text-[11px] text-muted-foreground">Click to select</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {PLATFORM_OPTIONS.map((plat) => {
-                    const currentPlatform = editingProblem.platform || "LeetCode";
-                    const isSelected = currentPlatform === plat.value || (plat.value === "Other" && !PLATFORM_OPTIONS.slice(0, 5).some((p) => p.value === currentPlatform));
-                    return (
-                      <button
-                        key={plat.value}
-                        type="button"
-                        onClick={() => {
-                          if (plat.value === "Other") {
-                            setEditingProblem({ ...editingProblem, platform: "Other" });
-                          } else {
-                            setEditingProblem({ ...editingProblem, platform: plat.value });
-                          }
-                        }}
-                        className={cn(
-                          "px-3 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                            : cn("border-border text-muted-foreground hover:text-foreground", plat.color)
-                        )}
-                      >
-                        {isSelected && <Check className="h-3 w-3 mr-0.5" />}
-                        <span>{plat.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {(!PLATFORM_OPTIONS.slice(0, 5).some((p) => p.value === (editingProblem.platform || "")) || editingProblem.platform === "Other") && (
-                  <div className="pt-1">
-                    <Input
-                      placeholder="Custom platform name..."
-                      value={editingProblem.platform === "Other" ? "" : (editingProblem.platform || "")}
-                      onChange={(e) => setEditingProblem({ ...editingProblem, platform: e.target.value })}
-                      className="text-xs h-8 bg-background"
-                    />
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+            <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">
+                    <Edit2 className="h-5 w-5" />
                   </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Difficulty</label>
-                <select
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
-                  value={editingProblem.difficulty}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, difficulty: e.target.value as any })}
-                >
-                  <option value="EASY">EASY</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HARD">HARD</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Solve URL</label>
-                <Input
-                  required
-                  placeholder="https://leetcode.com/problems/..."
-                  value={editingProblem.solveUrl}
-                  onChange={(e) =>
-                    handleSolveUrlChange(
-                      e.target.value,
-                      (val) => setEditingProblem({ ...editingProblem, solveUrl: val }),
-                      (plat) => setEditingProblem((prev) => (prev ? { ...prev, platform: plat } : null))
-                    )
-                  }
-                />
-                <p className="text-[11px] text-muted-foreground">https:// will be added automatically if omitted.</p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-                <Button
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">Edit Problem: {editingProblem.title}</h2>
+                    <p className="text-xs text-muted-foreground">Modify title, pattern name, platform, difficulty, or external link</p>
+                  </div>
+                </div>
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={() => setEditingProblem(null)}
-                  className="text-xs"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
                 >
-                  Cancel
-                </Button>
-                <Button type="submit" size="sm" disabled={isSubmittingProblem} className="text-xs gap-1.5">
-                  {isSubmittingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
-                  <span>Update Problem</span>
-                </Button>
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            </form>
+
+              <form onSubmit={handleUpdateProblem} className="space-y-4 text-xs">
+                {/* 1. Problem Title */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Problem Title</label>
+                  <Input
+                    required
+                    value={editingProblem.title}
+                    onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
+                  />
+                </div>
+
+                {/* 2. Associated Pattern & Track */}
+                <div className="space-y-2.5 pt-1 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>Associated Pattern Name & Topic</span>
+                    </label>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {patterns.length} patterns total
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1 font-medium">
+                        Filter Topic / Track:
+                      </label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground cursor-pointer focus:ring-1 focus:ring-primary"
+                        value={editProblemTopicId}
+                        onChange={(e) => {
+                          setEditProblemTopicId(e.target.value);
+                        }}
+                      >
+                        <option value="ALL">All Topics ({patterns.length} Patterns)</option>
+                        {topics.map((t) => {
+                          const count = patterns.filter((p) => p.topicId === t.id || p.topic?.id === t.id).length;
+                          return (
+                            <option key={t.id} value={t.id}>
+                              {t.name} ({count} Patterns)
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1 font-medium">
+                        Pattern Name:
+                      </label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground cursor-pointer focus:ring-1 focus:ring-emerald-500 font-medium"
+                        value={editProblemPatternId}
+                        onChange={(e) => setEditProblemPatternId(e.target.value)}
+                      >
+                        <option value="">-- No Pattern (Unassigned) --</option>
+                        {filteredEditTopicPatterns.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            #{p.number} - {p.name} [{p.difficulty}]
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Pattern Search filter if many patterns */}
+                  {editTopicPatterns.length > 5 && (
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Quick filter pattern by name or #..."
+                        value={editProblemPatternSearch}
+                        onChange={(e) => setEditProblemPatternSearch(e.target.value)}
+                        className="pl-8 text-xs h-8 bg-background"
+                      />
+                    </div>
+                  )}
+
+                  {/* Visual indication of currently assigned pattern */}
+                  {assignedPat ? (
+                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/30 bg-emerald-500/10">
+                          #{assignedPat.number}
+                        </Badge>
+                        <span className="font-semibold text-foreground">{assignedPat.name}</span>
+                        {assignedTopic && (
+                          <span className="text-muted-foreground text-[11px]">
+                            • {assignedTopic.name}
+                          </span>
+                        )}
+                      </div>
+                      <Badge
+                        variant={
+                          assignedPat.difficulty === "EASY"
+                            ? "easy"
+                            : assignedPat.difficulty === "HARD"
+                            ? "destructive"
+                            : "medium"
+                        }
+                        className="text-[10px]"
+                      >
+                        {assignedPat.difficulty}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs text-muted-foreground text-center">
+                      No pattern currently assigned to this problem.
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Platform Quick Selection Pills */}
+                <div className="space-y-2 pt-1 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-foreground">Platform</label>
+                    <span className="text-[11px] text-muted-foreground">Click to select</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {PLATFORM_OPTIONS.map((plat) => {
+                      const currentPlatform = editingProblem.platform || "LeetCode";
+                      const isSelected = currentPlatform === plat.value || (plat.value === "Other" && !PLATFORM_OPTIONS.slice(0, 5).some((p) => p.value === currentPlatform));
+                      return (
+                        <button
+                          key={plat.value}
+                          type="button"
+                          onClick={() => {
+                            if (plat.value === "Other") {
+                              setEditingProblem({ ...editingProblem, platform: "Other" });
+                            } else {
+                              setEditingProblem({ ...editingProblem, platform: plat.value });
+                            }
+                          }}
+                          className={cn(
+                            "px-3 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1",
+                            isSelected
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : cn("border-border text-muted-foreground hover:text-foreground", plat.color)
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3 mr-0.5" />}
+                          <span>{plat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {(!PLATFORM_OPTIONS.slice(0, 5).some((p) => p.value === (editingProblem.platform || "")) || editingProblem.platform === "Other") && (
+                    <div className="pt-1">
+                      <Input
+                        placeholder="Custom platform name..."
+                        value={editingProblem.platform === "Other" ? "" : (editingProblem.platform || "")}
+                        onChange={(e) => setEditingProblem({ ...editingProblem, platform: e.target.value })}
+                        className="text-xs h-8 bg-background"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Difficulty */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Difficulty</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground"
+                    value={editingProblem.difficulty}
+                    onChange={(e) => setEditingProblem({ ...editingProblem, difficulty: e.target.value as any })}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+
+                {/* 5. Solve URL */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Solve URL</label>
+                  <Input
+                    required
+                    placeholder="https://leetcode.com/problems/..."
+                    value={editingProblem.solveUrl}
+                    onChange={(e) =>
+                      handleSolveUrlChange(
+                        e.target.value,
+                        (val) => setEditingProblem({ ...editingProblem, solveUrl: val }),
+                        (plat) => setEditingProblem((prev) => (prev ? { ...prev, platform: plat } : null))
+                      )
+                    }
+                  />
+                  <p className="text-[11px] text-muted-foreground">https:// will be added automatically if omitted.</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingProblem(null)}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={isSubmittingProblem} className="text-xs gap-1.5">
+                    {isSubmittingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
+                    <span>Update Problem</span>
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 6.5. MODAL: CREATE ARTICLE (ADMIN) */}

@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CodeViewer } from "@/components/ui/code-viewer";
 import { MOCK_TOPICS, MOCK_PATTERNS } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
 import {
   Layers,
   ArrowRight,
@@ -111,6 +112,7 @@ const TWO_SUM_CODE: Record<string, { code: string; lang: string; title: string }
 };
 
 export default function Home() {
+  const { user } = useAuth();
   const featuredPattern = MOCK_PATTERNS[0];
   const [activeLanguage, setActiveLanguage] = useState<"python" | "cpp" | "java" | "javascript">("cpp");
   const [views, setViews] = useState<number | null>(null);
@@ -193,7 +195,7 @@ export default function Home() {
       {/* ========================================================================= */}
       {/* 1. HERO SECTION */}
       {/* ========================================================================= */}
-      <section className="relative w-full overflow-hidden border-b border-border/40 py-24 md:py-36 bg-slate-100/70 dark:bg-slate-900/40">
+      <section className="relative w-full overflow-hidden border-b border-border/40 py-16 sm:py-24 md:py-28 bg-slate-100/70 dark:bg-slate-900/40">
         {/* Landing Graphic Background with Light & Dark Mode Optimization */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 dark:opacity-80 pointer-events-none transition-opacity duration-300"
@@ -205,17 +207,17 @@ export default function Home() {
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
           {/* Live Views Counter Pill */}
-          <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/85 dark:bg-card/85 backdrop-blur-md px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs transition-all hover:border-primary/40">
+          <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/85 dark:bg-card/85 backdrop-blur-md px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs transition-all hover:border-primary/40">
             <Eye className="h-3.5 w-3.5 text-primary" />
             <span className="font-bold text-foreground" suppressHydrationWarning>
               {mounted && views !== null
                 ? `${views.toLocaleString()} ${views === 1 ? "Visit" : "Visits"}`
-                : "Loading ..."}
+                : "1,200+ Developers Preparing"}
             </span>
           </div>
 
           {/* Primary Headline */}
-          <h1 className="font-heading text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.12]">
+          <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15]">
             <span
               className="inline-block animate-word-reveal"
               style={{ animationDelay: "0ms" }}
@@ -244,23 +246,41 @@ export default function Home() {
           </h1>
 
           {/* Subtitle */}
-          <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground font-normal leading-relaxed">
+          <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base md:text-lg text-muted-foreground font-normal leading-relaxed">
             Every technical interview questions come down to a few core patterns. Learn the identification triggers, master multi-language templates and use spaced repetition to make them stick.
           </p>
 
-          {/* Action Buttons */}
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/register">
-              <Button size="lg" className="gap-2 h-12 px-7 text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/35 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <span>Start Learning Free</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/patterns">
-              <Button size="lg" variant="outline" className="h-12 px-7 text-sm font-semibold border-border/80 bg-background/70 backdrop-blur-sm hover:bg-muted/80 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <span>Explore 14+ Patterns</span>
-              </Button>
-            </Link>
+          {/* Action Buttons (Always Visible & Responsive in All Modes) */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 max-w-md sm:max-w-none mx-auto relative z-20">
+            {mounted && user ? (
+              <>
+                <Link href="/dashboard" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 h-12 px-7 text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/35 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <span>Go to Dashboard</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/patterns" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-sm font-semibold border-border/80 bg-background/70 backdrop-blur-sm hover:bg-muted/80 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <span>Explore 14+ Patterns</span>
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/register" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 h-12 px-7 text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/35 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <span>Start Learning Free</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/patterns" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-sm font-semibold border-border/80 bg-background/70 backdrop-blur-sm hover:bg-muted/80 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <span>Explore 14+ Patterns</span>
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Stats Strip */}
@@ -625,9 +645,9 @@ export default function Home() {
           </p>
 
           <div className="pt-3 flex justify-center gap-3">
-            <Link href="/register">
-              <Button size="lg" className="gap-2 h-12 px-8 text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <span>Create Your Free Account</span>
+            <Link href={mounted && user ? "/dashboard" : "/register"} className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                <span>{mounted && user ? "Go to Your Dashboard" : "Create Your Free Account"}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
