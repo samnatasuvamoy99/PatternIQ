@@ -103,26 +103,32 @@ function RegisterForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Email</label>
+                <label className="text-xs font-semibold text-foreground">Valid Email Address</label>
                 <Input
                   type="email"
-                  placeholder="ada@example.com"
+                  placeholder="yourname@gmail.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Use your active email (e.g. Gmail, Outlook, University email) to track your pattern progress.
+                </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Password</label>
+                <label className="text-xs font-semibold text-foreground">Create Account Password</label>
                 <Input
                   type="password"
-                  placeholder="At least 6 characters"
+                  placeholder="Create a password (min. 6 characters)"
                   required
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Create a new password for PatternIQ (this does not need to be your email provider password).
+                </p>
               </div>
 
               <Button
