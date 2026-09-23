@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },
 
   // All API routes read request.headers for JWT auth — mark them all as
