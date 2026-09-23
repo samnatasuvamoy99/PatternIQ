@@ -246,12 +246,12 @@ export default function Home() {
           </h1>
 
           {/* Subtitle */}
-          <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base md:text-lg text-muted-foreground font-normal leading-relaxed">
-            Every technical interview questions come down to a few core patterns. Learn the identification triggers, master multi-language templates and use spaced repetition to make them stick.
+          <p className="mx-auto mt-5 max-w-2xl sm:max-w-3xl text-sm sm:text-base md:text-lg text-muted-foreground font-normal leading-relaxed">
+            Stuck jumping between endless DSA sheets? Stop grinding blindly. We distilled the best roadmaps into what actually matters: <span className="font-semibold text-foreground">Pattern Recognition</span>. Master the hidden triggers, multi-language templates, and spaced repetition to make problem-solving second nature.
           </p>
 
           {/* Action Buttons (Always Visible & Responsive in All Modes) */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 max-w-md sm:max-w-none mx-auto relative z-20">
+          <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 max-w-md sm:max-w-none mx-auto relative z-20">
             {mounted && user ? (
               <>
                 <Link href="/dashboard" className="w-full sm:w-auto">
