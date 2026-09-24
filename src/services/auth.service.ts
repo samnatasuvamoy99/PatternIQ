@@ -4,6 +4,8 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "@/lib/jwt
 import { ApiError } from "@/lib/errors";
 import { RegisterInput, LoginInput } from "@/lib/validations/auth.validation";
 
+import { validateEmailAddress } from "@/lib/email-validator";
+
 function toPublicUser(user: {
   id: string; name: string; email: string; role: string;
   avatar: string | null; bio: string | null; createdAt: Date;
@@ -20,7 +22,16 @@ function toPublicUser(user: {
 }
 
 export async function registerUser(input: RegisterInput) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  // Validate email domain, check typos, and verify MX records
+  const emailValidation = await validateEmailAddress(input.email);
+  if (!emailValidation.isValid) {
+    throw ApiError.badRequest(
+      emailValidation.error || "The email domain is invalid or does not have active mail servers.",
+      "INVALID_EMAIL_DOMAIN"
+    );
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase().trim() } });
   if (existing) {
     throw ApiError.conflict("An account with this email already exists", "EMAIL_TAKEN");
   }
@@ -28,7 +39,7 @@ export async function registerUser(input: RegisterInput) {
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
-    data: { name: input.name, email: input.email, passwordHash },
+    data: { name: input.name.trim(), email: input.email.toLowerCase().trim(), passwordHash },
   });
 
   const accessToken = signAccessToken({ userId: user.id, role: user.role });

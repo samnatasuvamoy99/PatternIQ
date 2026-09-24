@@ -37,6 +37,26 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(formatAuthError(searchParams?.get("error")));
   const [isLoading, setIsLoading] = useState(false);
 
+  // Quick client-side typo hint
+  const getTypoSuggestion = (val: string) => {
+    const parts = val.trim().toLowerCase().split("@");
+    if (parts.length === 2) {
+      const [local, dom] = parts;
+      const typos: Record<string, string> = {
+        "gamil.com": "gmail.com",
+        "gmial.com": "gmail.com",
+        "gmai.com": "gmail.com",
+        "yaho.com": "yahoo.com",
+        "hotmial.com": "hotmail.com",
+        "outlok.com": "outlook.com",
+      };
+      if (typos[dom]) return `${local}@${typos[dom]}`;
+    }
+    return null;
+  };
+
+  const typoSuggestion = getTypoSuggestion(email);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -103,7 +123,7 @@ function RegisterForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Valid Email Address</label>
+                <label className="text-xs font-semibold text-foreground">Email Address</label>
                 <Input
                   type="email"
                   placeholder="yourname@gmail.com"
@@ -111,13 +131,19 @@ function RegisterForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Use your active email (e.g. Gmail, Outlook, University email) to track your pattern progress.
-                </p>
+                {typoSuggestion && (
+                  <button
+                    type="button"
+                    onClick={() => setEmail(typoSuggestion)}
+                    className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-medium"
+                  >
+                    💡 Did you mean <strong>{typoSuggestion}</strong>? Click to fix.
+                  </button>
+                )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Create Account Password</label>
+                <label className="text-xs font-semibold text-foreground">Password</label>
                 <Input
                   type="password"
                   placeholder="Create a password (min. 6 characters)"
@@ -126,9 +152,6 @@ function RegisterForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Create a new password for PatternIQ (this does not need to be your email provider password).
-                </p>
               </div>
 
               <Button

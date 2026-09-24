@@ -118,12 +118,15 @@ export default function AdminSignUpPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Must be the authorized admin email configured on the platform with an active, valid mail domain.
+                </p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Master Password (min 8 chars)</span>
+                  <span>Create Admin Password (min 8 chars)</span>
                 </label>
                 <Input
                   type="password"
@@ -134,6 +137,9 @@ export default function AdminSignUpPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Create a secure admin password for this platform.
+                </p>
               </div>
 
               <div className="space-y-1.5">

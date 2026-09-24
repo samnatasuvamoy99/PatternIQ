@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 import { NextRequest } from "next/server";
 import { apiHandler, parseJson } from "@/lib/handler";
 import { ok } from "@/lib/api-response";
@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { signAccessToken, signRefreshToken } from "@/lib/jwt";
 import { ApiError } from "@/lib/errors";
+import { validateEmailAddress } from "@/lib/email-validator";
 
 const adminRegisterSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -17,6 +18,14 @@ const adminRegisterSchema = z.object({
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const body = adminRegisterSchema.parse(await parseJson(req));
+
+  const emailValidation = await validateEmailAddress(body.email);
+  if (!emailValidation.isValid) {
+    throw ApiError.badRequest(
+      emailValidation.error || "The email domain is invalid or does not have active mail servers.",
+      "INVALID_EMAIL_DOMAIN"
+    );
+  }
 
   const allowedEmail = (process.env.ADMIN_EMAIL || "suvamoyadmin907@gmail.com").toLowerCase();
   if (body.email.toLowerCase() !== allowedEmail) {

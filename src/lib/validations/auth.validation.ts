@@ -6,9 +6,13 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "10minutemail.com",
   "tempmail.com",
   "temp-mail.org",
+  "temp-mail.io",
   "guerrillamail.com",
+  "guerrillamail.net",
+  "guerrillamail.org",
   "throwawaymail.com",
   "yopmail.com",
+  "yopmail.net",
   "sharklasers.com",
   "trashmail.com",
   "trashmail.net",
@@ -29,6 +33,10 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "fakeinbox.com",
   "dropmail.me",
   "getairmail.com",
+  "spam4.me",
+  "grr.la",
+  "guerrillamailblock.com",
+  "pokemail.net",
 ]);
 
 // Obvious dummy / placeholder domains
@@ -42,6 +50,11 @@ const DUMMY_DOMAINS = new Set([
   "aaa.com",
   "xyz.com",
   "example.com",
+  "example.org",
+  "example.net",
+  "sample.com",
+  "testing.com",
+  "notreal.com",
 ]);
 
 /**
@@ -76,10 +89,16 @@ export const validEmailSchema = z
       // Block known dummy domains
       if (DUMMY_DOMAINS.has(lowerDomain)) return false;
 
+      // Block common typo TLDs (e.g. .come, .con, .comm)
+      const domainParts = lowerDomain.split(".");
+      const tld = domainParts[domainParts.length - 1];
+      const invalidTlds = new Set(["come", "comm", "con", "coom", "cpm", "xom", "cin", "cmo"]);
+      if (invalidTlds.has(tld)) return false;
+
       return true;
     },
     {
-      message: "Please enter a valid, active email address (disposable or temporary emails are not permitted)",
+      message: "Please enter a valid, active email address (e.g. name@gmail.com with a valid domain extension)",
     }
   );
 
